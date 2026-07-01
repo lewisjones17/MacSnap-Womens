@@ -811,7 +811,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.0/umd/index.min.js"></script>
 <script>
 (function () {
   // ==== TODO before deploying ====
@@ -1036,7 +1036,7 @@
       guideLabel: 'LINE UP TV BARCODE',
       whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
       anchorPrefix: null,
-      useQR: true
+      useQR: true // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
     }
   };
 
@@ -1148,15 +1148,47 @@
     }
   }
 
+  // ZXing reader configured to try every format we might realistically see
+  // on a TV barcode/QR label — standard QR, Micro QR, DataMatrix, and the
+  // common 1D symbologies — in one decode pass, rather than guessing which
+  // type a given label uses ahead of time.
+  let zxingReader = null;
+  function getZxingReader() {
+    if (zxingReader) return zxingReader;
+    if (!window.ZXing) return null;
+    const wantedFormats = [
+      'QR_CODE', 'MICRO_QR_CODE', 'DATA_MATRIX',
+      'CODE_128', 'CODE_39', 'CODE_93', 'CODABAR', 'ITF',
+      'EAN_13', 'EAN_8', 'UPC_A', 'UPC_E'
+    ];
+    const formats = wantedFormats
+      .map(name => ZXing.BarcodeFormat[name])
+      .filter(f => f !== undefined);
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    return zxingReader;
+  }
+
   async function tryQR() {
     const vw = video.videoWidth, vh = video.videoHeight;
     captureCanvas.width = vw;
     captureCanvas.height = vh;
     const ctx = captureCanvas.getContext('2d');
     ctx.drawImage(video, 0, 0, vw, vh);
-    const imgData = ctx.getImageData(0, 0, vw, vh);
-    const code = window.jsQR ? jsQR(imgData.data, vw, vh) : null;
-    return code ? code.data : null;
+
+    const reader = getZxingReader();
+    if (!reader) return null;
+
+    try {
+      const result = reader.decodeFromCanvas(captureCanvas);
+      return result ? result.getText() : null;
+    } catch (err) {
+      // ZXing throws (NotFoundException etc.) when no code is found in
+      // frame — that's expected/normal, just fall through to OCR.
+      return null;
+    }
   }
 
   async function captureAndRead() {
@@ -1171,7 +1203,8 @@
       const vw = video.videoWidth;
       const vh = video.videoHeight;
 
-      // QR-first for targets that support it (TV barcode may be a QR code)
+      // ZXing-first for targets that support it (TV barcode may be QR,
+      // Micro QR, DataMatrix, or a 1D barcode)
       if (t.useQR) {
         const qrValue = await tryQR();
         if (qrValue) {
@@ -1183,7 +1216,7 @@
           const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
 
           setTargetResult(activeTarget, qrValue, 'capture', uploadDataUrl);
-          showToast('QR code captured — check it\u2019s correct');
+          showToast('Barcode captured — check it\u2019s correct');
           if (navigator.vibrate) navigator.vibrate(60);
           closeScanUI();
           return;
