@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MacSnap! Womens — Install Scanner</title>
+<style>
+  :root {
+    --ink:        #1a0f14;
+    --rose:       #971349;
+    --rose-light: #ff3d81;
+    --flag:       #d4452c;
+    --sand:       #f7ede8;
+    --line:       #e3d3d3;
+    --grey:       #7a6367;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--ink);
+    color: var(--sand);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  .wrap {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid rgba(247,237,232,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    background: var(--rose);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .brand-mark svg { width: 16px; height: 16px; }
+
+  .brand-text {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .brand-text span {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--grey);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .installer-tag {
+    font-size: 11px;
+    color: var(--grey);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .installer-tag button {
+    background: rgba(255,61,129,0.18);
+    border: 1px solid rgba(255,61,129,0.5);
+    color: var(--rose-light);
+    font-size: 10px;
+    font-weight: 700;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 5px 9px;
+    border-radius: 7px;
+    margin-left: 0;
+    flex: none;
+    width: auto;
+  }
+
+  .name-gate {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+  }
+  .name-gate.hidden { display: none; }
+
+  .name-gate-card {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+  }
+
+  .name-gate-brand {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: var(--sand);
+    margin-bottom: 18px;
+  }
+
+  .name-gate-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 18px;
+    border-radius: 16px;
+    background: rgba(151,19,73,0.3);
+    border: 1px solid rgba(255,61,129,0.5);
+    color: var(--rose-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .name-gate-icon svg { width: 28px; height: 28px; }
+
+  .name-gate-card h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .name-gate-card p {
+    font-size: 13px;
+    color: var(--grey);
+    margin-bottom: 20px;
+  }
+
+  #name-input, #job-input, #venue-input, #job-input-2, #venue-input-2 {
+    width: 100%;
+    background: var(--sand);
+    color: var(--ink);
+    border: none;
+    border-radius: 12px;
+    padding: 15px 16px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  #name-input:focus, #job-input:focus, #venue-input:focus,
+  #job-input-2:focus, #venue-input-2:focus { outline: 2px solid var(--rose-light); }
+
+  .name-gate-card p strong {
+    color: var(--sand);
+  }
+
+  .gate-copyright {
+    font-size: 10px;
+    color: var(--grey);
+    margin-top: 22px;
+    opacity: 0.7;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  #scan-region {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(247,237,232,0.1);
+  }
+
+  #scan-region video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .guide-box {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 82%;
+    pointer-events: none;
+  }
+
+  .guide-bars {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 2px;
+    height: 38px;
+    margin-bottom: 6px;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
+  }
+
+  .guide-bar {
+    background: var(--rose-light);
+    border-radius: 0.5px;
+  }
+
+  .guide-text {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--rose-light);
+    background: rgba(26,15,20,0.55);
+    border: 1.5px dashed var(--rose-light);
+    border-radius: 8px;
+    padding: 9px 0;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  }
+
+  .scan-state {
+    position: absolute;
+    bottom: 10px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(247,237,232,0.85);
+    text-transform: uppercase;
+  }
+
+  @keyframes focuspulse {
+    0%   { box-shadow: inset 0 0 0 0 rgba(255,61,129,0.9); }
+    50%  { box-shadow: inset 0 0 0 4px rgba(255,61,129,0.9); }
+    100% { box-shadow: inset 0 0 0 0 rgba(255,61,129,0); }
+  }
+  #scan-region.pulse { animation: focuspulse 0.5s ease-out; }
+
+  #placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--grey);
+    font-size: 13px;
+    text-align: center;
+    padding: 0 30px;
+  }
+
+  #placeholder svg { width: 36px; height: 36px; opacity: 0.5; }
+
+  .scan-buttons-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .scan-target-btn {
+    flex: 1;
+    padding: 15px 10px;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .scan-target-btn .sub {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.75;
+    text-transform: none;
+    margin-top: 2px;
+  }
+
+  .result-row {
+    background: var(--sand);
+    color: var(--ink);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .result-row-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rose);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .result-row-label .row-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .row-icon-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    flex: none;
+    width: auto;
+    color: var(--rose);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .row-icon-btn svg { width: 18px; height: 18px; }
+
+  .result-row-value {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-family: "SF Mono", "Roboto Mono", monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+  }
+  .result-row-value::placeholder { color: var(--grey); font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600; }
+  .result-row-value:focus { outline: none; border-bottom: 2px solid var(--rose); }
+
+  .result-row-meta {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--grey);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rose); flex-shrink: 0; }
+
+  .result-row-photo {
+    margin-top: 10px;
+    display: none;
+  }
+  .result-row-photo.show { display: block; }
+  .result-row-photo img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+  }
+
+  .manual-row {
+    display: none;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .manual-row.show { display: flex; }
+  .manual-row input {
+    flex: 1;
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 12px;
+    font-size: 15px;
+    font-family: "SF Mono", "Roboto Mono", monospace;
+  }
+  .manual-row input:focus { outline: 2px solid var(--rose-light); }
+  .manual-row button {
+    flex: 0 0 auto;
+    width: 64px;
+    padding: 8px;
+    font-size: 13px;
+    background: var(--rose);
+    color: var(--sand);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .camera-actions {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-large {
+    width: 100%;
+    padding: 19px 18px;
+    font-size: 17px;
+  }
+
+  .btn-small-full {
+    width: 100%;
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+
+  .form-section {
+    background: rgba(247,237,232,0.06);
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rose-light);
+    margin-bottom: 10px;
+  }
+
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    font-size: 14px;
+    color: var(--sand);
+    border-bottom: 1px solid rgba(247,237,232,0.08);
+  }
+  .check-row:last-of-type { border-bottom: none; }
+
+  .check-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--rose-light);
+    flex-shrink: 0;
+  }
+
+  #other-input, #plan-location-input {
+    width: 100%;
+    background: var(--sand);
+    color: var(--ink);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+  #other-input:focus, #plan-location-input:focus { outline: 2px solid var(--rose-light); }
+
+  #equip-other-input {
+    width: 100%;
+    background: var(--sand);
+    color: var(--ink);
+    border: none;
+    border-radius: 12px;
+    padding: 18px 16px;
+    font-size: 19px;
+    font-weight: 600;
+  }
+  #equip-other-input:focus { outline: 2px solid var(--rose-light); }
+
+  button {
+    font-family: inherit;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 1;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+
+  button:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--rose);
+    color: var(--sand);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  @keyframes sendpulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,61,129,0.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(255,61,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,61,129,0); }
+  }
+  .btn-primary.ready-to-send:not(:disabled) {
+    animation: sendpulse 1.6s ease-out infinite;
+  }
+
+  .btn-ghost {
+    background: rgba(247,237,232,0.08);
+    color: var(--sand);
+    border: 1px solid rgba(247,237,232,0.18);
+    flex: 0 0 auto;
+    width: 52px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-ghost svg { width: 36px; height: 36px; }
+
+  .complete-selected {
+    background: var(--rose) !important;
+    border-color: var(--rose) !important;
+    color: var(--sand) !important;
+  }
+
+  .btn-secondary {
+    background: rgba(247,237,232,0.08);
+    color: var(--sand);
+    border: 1px solid rgba(247,237,232,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-torch-active {
+    background: var(--flag) !important;
+    border-color: var(--flag) !important;
+    color: var(--sand) !important;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--grey);
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 10px;
+  }
+
+  .hint strong { color: var(--sand); font-weight: 600; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--rose);
+    color: var(--sand);
+    padding: 12px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .toast-check {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    animation: checkpop 0.35s ease-out;
+  }
+  @keyframes checkpop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+
+  footer {
+    padding: 10px 20px 18px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--grey);
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scanline { animation: none; top: 50%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 5h2v14H5V5zm4 0h1v14H9V5zm3 0h2v14h-2V5zm4 0h1v14h-1V5zm3 0h2v14h-2V5z" fill="#F7EDE8"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        MacSnap! Womens
+        <span>Install Scanner</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span id="installer-tag" class="installer-tag" style="display:none;"></span>
+    </div>
+  </header>
+
+  <div id="name-gate" class="name-gate">
+    <div class="name-gate-card">
+      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h2>Quick setup</h2>
+      <p>Saved on this phone — you'll only see this once.</p>
+      <input id="name-input" type="text" placeholder="Your name, e.g. Ivy" autocomplete="off" autocapitalize="words">
+      <input id="job-input" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
+      <input id="venue-input" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
+      <button class="btn-primary" id="btn-save-name">Save & continue</button>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+    </div>
+  </div>
+
+  <div id="confirm-gate" class="name-gate hidden">
+    <div class="name-gate-card">
+      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2 id="confirm-heading">Still here?</h2>
+      <p id="confirm-subtext">Job <strong id="confirm-job-display"></strong> at <strong id="confirm-venue-display"></strong></p>
+      <button class="btn-primary" id="btn-confirm-yes" style="margin-bottom:10px;">Yes, continue →</button>
+      <button class="btn-ghost" id="btn-confirm-no" style="width:100%; justify-content:center;">No, new job/structure</button>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+    </div>
+  </div>
+
+  <div id="update-gate" class="name-gate hidden">
+    <div class="name-gate-card">
+      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>New job / structure</h2>
+      <p>This updates what gets sent with every scan.</p>
+      <input id="job-input-2" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
+      <input id="venue-input-2" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
+      <button class="btn-primary" id="btn-save-update">Save & continue</button>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+    </div>
+  </div>
+
+  <main>
+
+    <div id="scan-region">
+      <video id="video" playsinline muted></video>
+      <canvas id="capture-canvas" style="display:none;"></canvas>
+      <div id="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Tap a scan button below to open the camera</span>
+      </div>
+      <div class="guide-box" id="guide-box" style="display:none;">
+        <div class="guide-bars">
+          <div class="guide-bar" style="width:2px"></div><div class="guide-bar" style="width:1px"></div>
+          <div class="guide-bar" style="width:3px"></div><div class="guide-bar" style="width:1px"></div>
+          <div class="guide-bar" style="width:1px"></div><div class="guide-bar" style="width:2px"></div>
+          <div class="guide-bar" style="width:1px"></div><div class="guide-bar" style="width:3px"></div>
+          <div class="guide-bar" style="width:2px"></div><div class="guide-bar" style="width:1px"></div>
+          <div class="guide-bar" style="width:1px"></div><div class="guide-bar" style="width:2px"></div>
+          <div class="guide-bar" style="width:3px"></div><div class="guide-bar" style="width:1px"></div>
+          <div class="guide-bar" style="width:2px"></div><div class="guide-bar" style="width:1px"></div>
+          <div class="guide-bar" style="width:1px"></div><div class="guide-bar" style="width:3px"></div>
+          <div class="guide-bar" style="width:1px"></div><div class="guide-bar" style="width:2px"></div>
+        </div>
+        <div class="guide-text" id="guide-text">LINE UP MAC DIGITS (NOT SERIAL NO.)</div>
+      </div>
+      <div class="scan-state" id="scan-state" style="display:none;">Tap Capture when lined up</div>
+    </div>
+
+    <div class="camera-actions">
+      <div class="scan-buttons-row" id="scan-buttons-row">
+        <button class="btn-primary scan-target-btn" id="btn-scan-mac">Scan Exterity Mac</button>
+        <button class="btn-primary scan-target-btn" id="btn-scan-tv">Scan TV Barcode</button>
+      </div>
+      <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
+      <button class="btn-secondary btn-small-full" id="btn-cancel-scan" style="display:none;">Cancel</button>
+    </div>
+
+    <div class="actions" id="camera-tool-actions" style="display:none;">
+      <button class="btn-ghost" id="btn-torch" aria-label="Toggle torch" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 2h6a1 1 0 0 1 1 1v3.382a2 2 0 0 1-.553 1.382L14 9.5V20a2 2 0 0 1-2 2 2 2 0 0 1-2-2V9.5L8.553 7.764A2 2 0 0 1 8 6.382V3a1 1 0 0 1 1-1z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Exterity Mac result row -->
+    <div class="result-row" id="mac-row">
+      <div class="result-row-label">
+        <span>Exterity Mac</span>
+        <span class="row-actions">
+          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
+      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
+      <div class="manual-row" id="mac-manual-row">
+        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
+        <button class="btn-primary" id="mac-manual-use">Use</button>
+      </div>
+    </div>
+
+    <!-- TV Barcode result row -->
+    <div class="result-row" id="tv-row">
+      <div class="result-row-label">
+        <span>TV Barcode</span>
+        <span class="row-actions">
+          <button class="row-icon-btn" id="btn-tv-manual" aria-label="Enter manually">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <input class="result-row-value" id="tv-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+      <div class="result-row-meta" id="tv-meta" style="display:none;"><span class="dot"></span><span id="tv-meta-text"></span></div>
+      <div class="result-row-photo" id="tv-photo-wrap"><img id="tv-photo-img"></div>
+      <div class="manual-row" id="tv-manual-row">
+        <input type="text" id="tv-manual-input" placeholder="Type TV barcode" autocapitalize="characters" autocomplete="off">
+        <button class="btn-primary" id="tv-manual-use">Use</button>
+      </div>
+    </div>
+
+    <div id="equipment-section" class="form-section">
+      <div class="section-label">Location (Number on plan or describe!)</div>
+      <input id="plan-location-input" type="text" placeholder="e.g. 12, or describe the spot" autocomplete="off" style="margin-bottom:14px;">
+      <div class="section-label">Equipment installed</div>
+      <label class="check-row"><input type="checkbox" value="43 inch Tv" class="equip-check tv-size-check"> 43 inch Tv</label>
+      <label class="check-row"><input type="checkbox" value="55 inch Tv" class="equip-check tv-size-check"> 55 inch Tv</label>
+      <label class="check-row"><input type="checkbox" value="65 inch Tv" class="equip-check tv-size-check"> 65 inch Tv</label>
+      <label class="check-row"><input type="checkbox" value="75 inch Tv" class="equip-check tv-size-check"> 75 inch Tv</label>
+      <label class="check-row"><input type="checkbox" value="85 inch Tv" class="equip-check tv-size-check"> 85 inch Tv</label>
+      <label class="check-row"><input type="checkbox" value="Stand" class="equip-check"> Stand</label>
+      <label class="check-row"><input type="checkbox" value="Exterity" class="equip-check exterity-check" checked> Exterity</label>
+      <input id="equip-other-input" type="text" placeholder="Other equipment (optional)" autocomplete="off" style="margin-top:10px;">
+    </div>
+
+    <div id="complete-section" class="form-section">
+      <div class="section-label">Job Complete?</div>
+      <div class="actions">
+        <button class="btn-primary" id="btn-complete-yes">Yes</button>
+        <button class="btn-ghost" id="btn-complete-no" style="justify-content:center;">No</button>
+      </div>
+    </div>
+
+    <div id="reasons-section" class="form-section" style="display:none;">
+      <div class="section-label">Why Not?</div>
+      <label class="check-row"><input type="checkbox" value="No Poe" class="reason-check"> No Poe</label>
+      <label class="check-row"><input type="checkbox" value="No Cat5" class="reason-check"> No Cat5</label>
+      <label class="check-row"><input type="checkbox" value="No Power installed" class="reason-check"> No Power installed</label>
+      <label class="check-row"><input type="checkbox" value="Power NOT On" class="reason-check"> Power NOT On</label>
+      <label class="check-row"><input type="checkbox" value="No Furniture" class="reason-check"> No Furniture</label>
+      <input id="other-input" type="text" placeholder="Other (optional)" autocomplete="off" style="margin-top:10px;">
+    </div>
+
+    <button class="btn-primary btn-large" id="btn-submit" disabled>Send to install form →</button>
+
+    <p class="hint">Tick equipment as it goes in. If a TV size or Exterity is ticked, scan it above — unticking either one before you send means that scan (and its photo) won't be included, so scroll down and untick anything that doesn't apply.</p>
+
+  </main>
+
+  <footer>MacSnap! Womens · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+(function () {
+  // ==== TODO before deploying ====
+  // Replace with the Web App URL from your MacSnap! Womens sheet-writer Apps Script deployment.
+  const SHEET_URL     = "PASTE_SHEET_SCRIPT_WEB_APP_URL_HERE";
+  // Replace with the Web App URL from your MacSnap! Womens photo-upload Apps Script deployment.
+  const PHOTO_UPLOAD_URL = "PASTE_PHOTO_UPLOAD_WEB_APP_URL_HERE";
+
+  const STORAGE_KEY = "macsnap_womens_installer_session";
+
+  // ---------------------------------------------------------------
+  // SETUP GATES — first-use form, then confirm-or-update each time
+  // ---------------------------------------------------------------
+  const nameGate     = document.getElementById('name-gate');
+  const confirmGate  = document.getElementById('confirm-gate');
+  const updateGate   = document.getElementById('update-gate');
+
+  const nameInput    = document.getElementById('name-input');
+  const jobInput     = document.getElementById('job-input');
+  const venueInput   = document.getElementById('venue-input');
+  const btnSaveName  = document.getElementById('btn-save-name');
+
+  const confirmJobDisplay   = document.getElementById('confirm-job-display');
+  const confirmVenueDisplay = document.getElementById('confirm-venue-display');
+  const btnConfirmYes = document.getElementById('btn-confirm-yes');
+  const btnConfirmNo  = document.getElementById('btn-confirm-no');
+
+  const jobInput2    = document.getElementById('job-input-2');
+  const venueInput2  = document.getElementById('venue-input-2');
+  const btnSaveUpdate = document.getElementById('btn-save-update');
+
+  const installerTag = document.getElementById('installer-tag');
+
+  function getSession() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+    catch (e) { return null; }
+  }
+  function setSession(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  let session = getSession();
+  let lastActivityTime = Date.now();
+  const IDLE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+  function hideAllGates() {
+    nameGate.classList.add('hidden');
+    confirmGate.classList.add('hidden');
+    updateGate.classList.add('hidden');
+  }
+
+  function showInstallerTag() {
+    if (!session || !session.name) { installerTag.style.display = 'none'; return; }
+    installerTag.style.display = 'inline';
+    installerTag.innerHTML = 'Hi, ' + session.name + '<button id="btn-new-job">new job</button><button id="btn-change-name">reset</button>';
+    document.getElementById('btn-new-job').addEventListener('click', () => {
+      hideAllGates();
+      updateGate.classList.remove('hidden');
+      jobInput2.value = session.job || '';
+      venueInput2.value = session.venue || '';
+      jobInput2.focus();
+    });
+    document.getElementById('btn-change-name').addEventListener('click', () => {
+      hideAllGates();
+      nameGate.classList.remove('hidden');
+      nameInput.value = session.name || '';
+      jobInput.value = session.job || '';
+      venueInput.value = session.venue || '';
+      nameInput.focus();
+    });
+  }
+
+  function goToConfirmScreen() {
+    hideAllGates();
+    confirmGate.classList.remove('hidden');
+    confirmJobDisplay.textContent = session.job;
+    confirmVenueDisplay.textContent = session.venue;
+  }
+
+  btnSaveName.addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    const job = jobInput.value.trim();
+    const venue = venueInput.value.trim();
+    if (!name) { nameInput.focus(); return; }
+    if (!job) { jobInput.focus(); return; }
+    if (!venue) { venueInput.focus(); return; }
+    session = { name, job, venue };
+    setSession(session);
+    hideAllGates();
+    showInstallerTag();
+  });
+
+  [nameInput, jobInput, venueInput].forEach((el, i, arr) => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (i < arr.length - 1) { arr[i + 1].focus(); }
+      else { btnSaveName.click(); }
+    });
+  });
+
+  btnConfirmYes.addEventListener('click', () => {
+    hideAllGates();
+    lastActivityTime = Date.now();
+  });
+
+  btnConfirmNo.addEventListener('click', () => {
+    hideAllGates();
+    updateGate.classList.remove('hidden');
+    jobInput2.value = session.job || '';
+    venueInput2.value = session.venue || '';
+    jobInput2.focus();
+  });
+
+  btnSaveUpdate.addEventListener('click', () => {
+    const job = jobInput2.value.trim();
+    const venue = venueInput2.value.trim();
+    if (!job) { jobInput2.focus(); return; }
+    if (!venue) { venueInput2.focus(); return; }
+    session.job = job;
+    session.venue = venue;
+    setSession(session);
+    hideAllGates();
+  });
+
+  [jobInput2, venueInput2].forEach((el, i, arr) => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (i < arr.length - 1) { arr[i + 1].focus(); }
+      else { btnSaveUpdate.click(); }
+    });
+  });
+
+  if (session && session.name && session.job && session.venue) {
+    showInstallerTag();
+    goToConfirmScreen();
+  } else {
+    nameGate.classList.remove('hidden');
+    nameInput.focus();
+  }
+
+  // Re-confirm identity if the phone's been idle a while and someone taps a scan button
+  function checkIdleThenRun(fn) {
+    const idleFor = Date.now() - lastActivityTime;
+    if (idleFor >= IDLE_THRESHOLD_MS && session && session.name && session.job && session.venue) {
+      pendingAction = fn;
+      goToConfirmScreen();
+      return;
+    }
+    fn();
+  }
+  let pendingAction = null;
+  const originalConfirmYesHandler = btnConfirmYes.onclick;
+  btnConfirmYes.addEventListener('click', () => {
+    if (pendingAction) { const fn = pendingAction; pendingAction = null; fn(); }
+  });
+
+  // ---------------------------------------------------------------
+  // CAMERA / SCAN ENGINE — shared video element, two targets
+  // ---------------------------------------------------------------
+  const video           = document.getElementById('video');
+  const captureCanvas   = document.getElementById('capture-canvas');
+  const placeholder      = document.getElementById('placeholder');
+  const guideBox          = document.getElementById('guide-box');
+  const guideText          = document.getElementById('guide-text');
+  const scanState         = document.getElementById('scan-state');
+  const scanButtonsRow    = document.getElementById('scan-buttons-row');
+  const btnScanMac        = document.getElementById('btn-scan-mac');
+  const btnScanTv         = document.getElementById('btn-scan-tv');
+  const btnCapture        = document.getElementById('btn-capture');
+  const btnCancelScan     = document.getElementById('btn-cancel-scan');
+  const cameraToolActions = document.getElementById('camera-tool-actions');
+  const btnTorch          = document.getElementById('btn-torch');
+  const toast              = document.getElementById('toast');
+  const btnSubmit          = document.getElementById('btn-submit');
+  const equipmentSection  = document.getElementById('equipment-section');
+  const completeSection   = document.getElementById('complete-section');
+  const reasonsSection    = document.getElementById('reasons-section');
+  const btnCompleteYes    = document.getElementById('btn-complete-yes');
+  const btnCompleteNo     = document.getElementById('btn-complete-no');
+  const otherInput        = document.getElementById('other-input');
+  const planLocationInput = document.getElementById('plan-location-input');
+  const equipOtherInput   = document.getElementById('equip-other-input');
+
+  let jobComplete = null;
+  let scanning = false;
+  let activeTrack = null;
+  let torchOn = false;
+  let ocrBusy = false;
+  let activeTarget = null; // 'mac' | 'tv'
+
+  // Per-target state
+  const targets = {
+    mac: {
+      value: null,
+      photo: null,
+      valueEl: document.getElementById('mac-value'),
+      metaEl: document.getElementById('mac-meta'),
+      metaTextEl: document.getElementById('mac-meta-text'),
+      photoWrap: document.getElementById('mac-photo-wrap'),
+      photoImg: document.getElementById('mac-photo-img'),
+      manualRow: document.getElementById('mac-manual-row'),
+      manualInput: document.getElementById('mac-manual-input'),
+      manualUseBtn: document.getElementById('mac-manual-use'),
+      manualBtn: document.getElementById('btn-mac-manual'),
+      guideLabel: 'LINE UP MAC DIGITS (NOT SERIAL NO.)',
+      whitelist: '0123456789ABCDEFabcdef',
+      anchorPrefix: '00181C',
+      useQR: false
+    },
+    tv: {
+      value: null,
+      photo: null,
+      valueEl: document.getElementById('tv-value'),
+      metaEl: document.getElementById('tv-meta'),
+      metaTextEl: document.getElementById('tv-meta-text'),
+      photoWrap: document.getElementById('tv-photo-wrap'),
+      photoImg: document.getElementById('tv-photo-img'),
+      manualRow: document.getElementById('tv-manual-row'),
+      manualInput: document.getElementById('tv-manual-input'),
+      manualUseBtn: document.getElementById('tv-manual-use'),
+      manualBtn: document.getElementById('btn-tv-manual'),
+      guideLabel: 'LINE UP TV BARCODE',
+      whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
+      anchorPrefix: null,
+      useQR: true
+    }
+  };
+
+  function showToast(msg, success) {
+    toast.innerHTML = success
+      ? '<svg class="toast-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" xmlns="http://www.w3.org/2000/svg"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>' + msg
+      : msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2400);
+  }
+
+  function updateSubmitButtonState() {
+    btnSubmit.disabled = !jobComplete;
+  }
+
+  function setTargetResult(key, value, source, photoDataUrl) {
+    const t = targets[key];
+    t.value = value.trim();
+    t.valueEl.value = t.value;
+    if (photoDataUrl !== undefined) t.photo = photoDataUrl;
+
+    t.metaEl.style.display = 'flex';
+    if (source === 'manual') t.metaTextEl.textContent = 'Entered manually';
+    else if (source === 'capture') t.metaTextEl.textContent = 'Captured — check it\u2019s correct';
+    else t.metaTextEl.textContent = source;
+
+    if (t.photo) {
+      t.photoWrap.classList.add('show');
+      t.photoImg.src = t.photo;
+    } else {
+      t.photoWrap.classList.remove('show');
+    }
+  }
+
+  targets.mac.valueEl.addEventListener('input', () => { targets.mac.value = targets.mac.valueEl.value.trim(); });
+  targets.tv.valueEl.addEventListener('input', () => { targets.tv.value = targets.tv.valueEl.value.trim(); });
+
+  function openScanUI(key) {
+    activeTarget = key;
+    scanButtonsRow.style.display = 'none';
+    btnCancelScan.style.display = 'block';
+    startCamera();
+  }
+
+  function closeScanUI() {
+    activeTarget = null;
+    scanButtonsRow.style.display = 'flex';
+    btnCapture.style.display = 'none';
+    btnCancelScan.style.display = 'none';
+    cameraToolActions.style.display = 'none';
+    placeholder.style.display = 'flex';
+    guideBox.style.display = 'none';
+    scanState.style.display = 'none';
+    scanning = false;
+    if (activeTrack) { activeTrack.stop(); activeTrack = null; }
+    btnTorch.style.display = 'none';
+  }
+
+  btnScanMac.addEventListener('click', () => checkIdleThenRun(() => openScanUI('mac')));
+  btnScanTv.addEventListener('click', () => checkIdleThenRun(() => openScanUI('tv')));
+  btnCancelScan.addEventListener('click', closeScanUI);
+
+  async function startCamera() {
+    if (scanning) return;
+    try {
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+      } catch (permErr) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        } catch (permErr2) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+      }
+
+      const [track] = stream.getVideoTracks();
+      activeTrack = track;
+      if (track && track.getCapabilities) {
+        const caps = track.getCapabilities();
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+        }
+        if (caps.torch) {
+          btnTorch.style.display = 'flex';
+          cameraToolActions.style.display = 'flex';
+        }
+      }
+
+      video.srcObject = stream;
+      await video.play();
+
+      placeholder.style.display = 'none';
+      guideBox.style.display = 'block';
+      guideText.textContent = targets[activeTarget].guideLabel;
+      scanState.style.display = 'block';
+      scanState.textContent = 'Tap Capture when lined up';
+      scanning = true;
+      btnCapture.style.display = 'block';
+
+    } catch (err) {
+      if (err.name === 'NotAllowedError') showToast('Camera permission denied — check Safari settings');
+      else if (err.name === 'NotFoundError') showToast('No camera found on this device');
+      else showToast('Camera unavailable — try manual entry');
+      console.error(err);
+      closeScanUI();
+    }
+  }
+
+  async function tryQR() {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    captureCanvas.width = vw;
+    captureCanvas.height = vh;
+    const ctx = captureCanvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, vw, vh);
+    const imgData = ctx.getImageData(0, 0, vw, vh);
+    const code = window.jsQR ? jsQR(imgData.data, vw, vh) : null;
+    return code ? code.data : null;
+  }
+
+  async function captureAndRead() {
+    if (!scanning || ocrBusy || !activeTarget) return;
+    const t = targets[activeTarget];
+    ocrBusy = true;
+    btnCapture.textContent = 'Reading…';
+    btnCapture.disabled = true;
+    scanState.textContent = 'Reading…';
+
+    try {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+
+      // QR-first for targets that support it (TV barcode may be a QR code)
+      if (t.useQR) {
+        const qrValue = await tryQR();
+        if (qrValue) {
+          // Build an upload photo from the full frame for reference
+          const uploadCanvas = document.createElement('canvas');
+          uploadCanvas.width = vw;
+          uploadCanvas.height = vh;
+          uploadCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
+          const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
+
+          setTargetResult(activeTarget, qrValue, 'capture', uploadDataUrl);
+          showToast('QR code captured — check it\u2019s correct');
+          if (navigator.vibrate) navigator.vibrate(60);
+          closeScanUI();
+          return;
+        }
+      }
+
+      // OCR fallback path (also the only path for the mac target)
+      const cropW = vw * 0.86;
+      const cropH = vh * 0.22;
+      const cropX = (vw - cropW) / 2;
+      const cropY = (vh * 0.50);
+
+      captureCanvas.width = cropW;
+      captureCanvas.height = cropH;
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+      const upscale = 2;
+      const procCanvas = document.createElement('canvas');
+      procCanvas.width = cropW * upscale;
+      procCanvas.height = cropH * upscale;
+      const pctx = procCanvas.getContext('2d');
+      pctx.imageSmoothingEnabled = true;
+      pctx.imageSmoothingQuality = 'high';
+      pctx.drawImage(captureCanvas, 0, 0, procCanvas.width, procCanvas.height);
+
+      const imgData = pctx.getImageData(0, 0, procCanvas.width, procCanvas.height);
+      const px = imgData.data;
+      let min = 255, max = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const gray = (px[i] + px[i+1] + px[i+2]) / 3;
+        if (gray < min) min = gray;
+        if (gray > max) max = gray;
+      }
+      const range = Math.max(max - min, 1);
+      for (let i = 0; i < px.length; i += 4) {
+        const gray = (px[i] + px[i+1] + px[i+2]) / 3;
+        const stretched = Math.round(((gray - min) / range) * 255);
+        px[i] = px[i+1] = px[i+2] = stretched;
+      }
+      pctx.putImageData(imgData, 0, 0);
+
+      const uploadCanvas = document.createElement('canvas');
+      uploadCanvas.width = cropW;
+      uploadCanvas.height = cropH;
+      uploadCanvas.getContext('2d').drawImage(captureCanvas, 0, 0, cropW, cropH);
+      const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
+
+      const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
+
+      const { data } = await Tesseract.recognize(dataUrl, 'eng', {
+        tessedit_char_whitelist: t.whitelist,
+      });
+
+      const cleaned = (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
+
+      let finalValue;
+      if (t.anchorPrefix) {
+        const prefixIndex = cleaned.indexOf(t.anchorPrefix);
+        if (prefixIndex !== -1 && cleaned.length - prefixIndex >= 12) {
+          finalValue = cleaned.slice(prefixIndex, prefixIndex + 12);
+        } else {
+          finalValue = cleaned.slice(0, 12);
+        }
+      } else {
+        finalValue = cleaned;
+      }
+
+      if (cleaned.length >= (t.anchorPrefix ? 10 : 4)) {
+        setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
+        showToast('Captured — check it\u2019s correct');
+        if (navigator.vibrate) navigator.vibrate(60);
+        closeScanUI();
+      } else {
+        showToast('Could not read it clearly — try again or type it');
+        scanState.textContent = 'Tap Capture when lined up';
+      }
+
+    } catch (err) {
+      console.error('OCR error:', err);
+      showToast('Could not read it — try again or type it');
+      scanState.textContent = 'Tap Capture when lined up';
+    } finally {
+      ocrBusy = false;
+      btnCapture.textContent = 'Capture';
+      btnCapture.disabled = false;
+    }
+  }
+
+  btnCapture.addEventListener('click', captureAndRead);
+
+  btnTorch.addEventListener('click', () => setTorch(!torchOn));
+  function setTorch(on) {
+    if (!activeTrack) return;
+    activeTrack.applyConstraints({ advanced: [{ torch: on }] })
+      .then(() => { torchOn = on; btnTorch.classList.toggle('btn-torch-active', on); })
+      .catch(() => {});
+  }
+
+  // Manual entry per target
+  ['mac', 'tv'].forEach((key) => {
+    const t = targets[key];
+    t.manualBtn.addEventListener('click', () => {
+      t.manualRow.classList.toggle('show');
+      if (t.manualRow.classList.contains('show')) t.manualInput.focus();
+    });
+    t.manualUseBtn.addEventListener('click', () => {
+      const val = t.manualInput.value.trim();
+      if (!val) { showToast('Type a value first'); return; }
+      setTargetResult(key, val, 'manual', null);
+      t.manualRow.classList.remove('show');
+      t.manualInput.value = '';
+    });
+    t.manualInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') t.manualUseBtn.click();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // COMPLETE / SUBMIT
+  // ---------------------------------------------------------------
+  btnCompleteYes.addEventListener('click', () => {
+    jobComplete = 'Yes';
+    reasonsSection.style.display = 'none';
+    btnCompleteYes.classList.add('complete-selected');
+    btnCompleteNo.classList.remove('complete-selected');
+    btnSubmit.classList.remove('ready-to-send');
+    updateSubmitButtonState();
+    submitJob();
+  });
+
+  btnCompleteNo.addEventListener('click', () => {
+    jobComplete = 'No';
+    reasonsSection.style.display = 'block';
+    btnCompleteNo.classList.add('complete-selected');
+    btnCompleteYes.classList.remove('complete-selected');
+    updateSubmitButtonState();
+    btnSubmit.classList.add('ready-to-send');
+    showToast('Select the reason(s), then tap Send to finish');
+  });
+
+  function isExterityTicked() {
+    const cb = document.querySelector('.exterity-check');
+    return cb && cb.checked;
+  }
+  function isAnyTvSizeTicked() {
+    return Array.from(document.querySelectorAll('.tv-size-check')).some(cb => cb.checked);
+  }
+
+  function buildPayload() {
+    const equipment = [];
+    document.querySelectorAll('.equip-check:checked').forEach(cb => equipment.push(cb.value));
+    const equipOtherVal = equipOtherInput.value.trim();
+    if (equipOtherVal) equipment.push(equipOtherVal);
+
+    const whyNot = [];
+    if (jobComplete === 'No') {
+      document.querySelectorAll('.reason-check:checked').forEach(cb => whyNot.push(cb.value));
+    }
+
+    // Live-read equipment ticks at submit time: unticked = that scan sent empty
+    // regardless of whether a capture was made earlier.
+    const macApplies = isExterityTicked();
+    const tvApplies = isAnyTvSizeTicked();
+
+    return {
+      mac:       macApplies ? (targets.mac.value || '') : '',
+      tvId:      tvApplies  ? (targets.tv.value  || '') : '',
+      name:      session?.name       || '',
+      job:       session?.job        || '',
+      location:  session?.venue      || '',
+      plan:      planLocationInput.value.trim(),
+      equipment,
+      complete:  jobComplete         || '',
+      whyNot,
+      other:     jobComplete === 'No' ? otherInput.value.trim() : '',
+      macPhoto:  '',
+      tvPhoto:   ''
+    };
+  }
+
+  let submitting = false;
+
+  async function uploadPhoto(dataUrl, filenamePrefix) {
+    if (!dataUrl) return null;
+    try {
+      const response = await fetch(PHOTO_UPLOAD_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          image: dataUrl,
+          filename: filenamePrefix + '_' + Date.now() + '.jpg'
+        })
+      });
+      const result = await response.json();
+      if (result.success) return result.link;
+      console.error('Photo upload failed:', result.error);
+      return null;
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      return null;
+    }
+  }
+
+  async function submitJob() {
+    if (!jobComplete || submitting) return;
+    submitting = true;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Uploading photos…';
+
+    try {
+      const macApplies = isExterityTicked();
+      const tvApplies = isAnyTvSizeTicked();
+
+      const macPhotoLink = macApplies ? await uploadPhoto(targets.mac.photo, 'mac_scan') : null;
+      const tvPhotoLink  = tvApplies  ? await uploadPhoto(targets.tv.photo, 'tv_scan')   : null;
+
+      btnSubmit.textContent = 'Sending…';
+      const payload = buildPayload();
+      if (macPhotoLink) payload.macPhoto = macPhotoLink;
+      if (tvPhotoLink) payload.tvPhoto = tvPhotoLink;
+
+      const response = await fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        showSubmitSuccess();
+      } else {
+        throw new Error(result.error || 'Script returned failure');
+      }
+
+    } catch (err) {
+      console.error('Submit error:', err);
+      submitting = false;
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Send to install form →';
+      showToast('Could not send — check connection and try again');
+    }
+  }
+
+  btnSubmit.addEventListener('click', submitJob);
+
+  function resetTarget(key) {
+    const t = targets[key];
+    t.value = null;
+    t.photo = null;
+    t.valueEl.value = '';
+    t.metaEl.style.display = 'none';
+    t.photoWrap.classList.remove('show');
+    t.manualRow.classList.remove('show');
+    t.manualInput.value = '';
+  }
+
+  function showSubmitSuccess() {
+    const wasComplete = (jobComplete === 'Yes');
+    lastActivityTime = Date.now();
+
+    resetTarget('mac');
+    resetTarget('tv');
+
+    jobComplete = null;
+    submitting = false;
+
+    document.querySelectorAll('.reason-check').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.tv-size-check').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.equip-check').forEach(cb => {
+      if (cb.classList.contains('exterity-check')) cb.checked = true; // Exterity auto-ticked by default
+      else if (!cb.classList.contains('tv-size-check') && cb.value !== 'Stand') cb.checked = false;
+    });
+    document.querySelector('.exterity-check').checked = true;
+    otherInput.value = '';
+    planLocationInput.value = '';
+    equipOtherInput.value = '';
+    btnCompleteYes.classList.remove('complete-selected');
+    btnCompleteNo.classList.remove('complete-selected');
+    btnSubmit.classList.remove('ready-to-send');
+    reasonsSection.style.display = 'none';
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Send to install form →';
+
+    closeScanUI();
+
+    showToast('Submitted — ready for the next one', true);
+    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+    if (wasComplete) fireConfetti();
+    else fireSoClose();
+  }
+
+  const SO_CLOSE_PHRASES = [
+    'SO CLOSE!!!!',
+    'ALMOST HAD IT!!!!',
+    'NOT TODAY!!!!',
+    'SO NEAR, YET SO FAR!!!!',
+    'NEXT TIME, MAYBE!!!!',
+    'CLOSE, BUT NO CIGAR!!!!',
+    'THE STRUGGLE IS REAL!!!!',
+    'BLOCKED BY THE BUILDING!!!!',
+    'BE BETTER…..',
+    'GIRL, NOT YET!!!!',
+    'NICE TRY, BABE!!!!',
+    'HOLD THAT THOUGHT!!!!',
+    'PLOT TWIST!!!!',
+    'SASS LEVEL: HIGH. RESULT: LOW.',
+    'CUTE ATTEMPT THOUGH!!!!'
+  ];
+
+  function fireSoClose() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.zIndex = '2000';
+    overlay.style.overflow = 'hidden';
+
+    const phrase = SO_CLOSE_PHRASES[Math.floor(Math.random() * SO_CLOSE_PHRASES.length)];
+
+    const card = document.createElement('div');
+    card.style.background = 'var(--sand)';
+    card.style.borderRadius = '16px';
+    card.style.padding = '14px 22px';
+    card.style.boxShadow = '0 8px 32px rgba(0,0,0,0.45)';
+    card.style.opacity = '0';
+    card.style.transformOrigin = 'center center';
+
+    const text = document.createElement('div');
+    text.textContent = phrase;
+    text.style.fontWeight = '800';
+    text.style.letterSpacing = '0.06em';
+    text.style.color = 'var(--ink)';
+    let baseFontSize;
+    if (phrase.length > 24) baseFontSize = '13px';
+    else if (phrase.length > 19) baseFontSize = '15px';
+    else if (phrase.length > 15) baseFontSize = '18px';
+    else baseFontSize = '24px';
+    text.style.fontSize = baseFontSize;
+    text.style.whiteSpace = 'nowrap';
+
+    card.appendChild(text);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const cardWidth = card.getBoundingClientRect().width;
+    const maxScaleForWidth = (window.innerWidth * 0.88) / cardWidth;
+    const endScale = Math.min(9, Math.max(maxScaleForWidth, 1.5));
+
+    const startTime = performance.now();
+    const zoomDuration = 3400;
+    const holdDuration = 700;
+    const fadeOutStart = zoomDuration + holdDuration;
+    const totalDuration = fadeOutStart + 500;
+
+    const startScale = 1;
+    const wobbleDegrees = 6;
+    const wobbleSpeed = 0.0045;
+
+    function frame(now) {
+      const elapsed = now - startTime;
+
+      if (elapsed <= zoomDuration) {
+        const t = elapsed / zoomDuration;
+        const eased = 1 - Math.pow(1 - t, 3);
+        const scale = startScale + (endScale - startScale) * eased;
+        const wobble = Math.sin(elapsed * wobbleSpeed) * wobbleDegrees;
+        card.style.opacity = Math.min(t * 4, 1);
+        card.style.transform = 'scale(' + scale + ') rotate(' + wobble + 'deg)';
+      } else if (elapsed <= fadeOutStart) {
+        const wobble = Math.sin(elapsed * wobbleSpeed) * wobbleDegrees;
+        card.style.opacity = '1';
+        card.style.transform = 'scale(' + endScale + ') rotate(' + wobble + 'deg)';
+      } else {
+        const fadeT = (elapsed - fadeOutStart) / (totalDuration - fadeOutStart);
+        card.style.opacity = String(Math.max(1 - fadeT, 0));
+      }
+
+      if (elapsed < totalDuration) {
+        requestAnimationFrame(frame);
+      } else {
+        overlay.remove();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function fireConfetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.inset = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '2000';
+    document.body.appendChild(canvas);
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const colors = ['#971349', '#ff3d81', '#f7ede8', '#d4452c'];
+    const pieceCount = 180;
+    const pieces = [];
+    for (let i = 0; i < pieceCount; i++) {
+      pieces.push({
+        x: window.innerWidth / 2 + (Math.random() - 0.5) * 140,
+        y: window.innerHeight * 0.18,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -(Math.random() * 9 + 6),
+        size: Math.random() * 9 + 8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * 360,
+        spin: (Math.random() - 0.5) * 22,
+        gravity: 0.22 + Math.random() * 0.08
+      });
+    }
+
+    let fireworks = [];
+    function spawnFirework() {
+      const cx = window.innerWidth * (0.25 + Math.random() * 0.5);
+      const cy = window.innerHeight * (0.25 + Math.random() * 0.3);
+      const sparkCount = 36;
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (Math.PI * 2 * i) / sparkCount + Math.random() * 0.2;
+        const speed = Math.random() * 5 + 3;
+        fireworks.push({
+          x: cx, y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: Math.random() * 2.5 + 1.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1,
+          fade: 0.018 + Math.random() * 0.01
+        });
+      }
+    }
+    const fireworkTimes = [80, 550, 1100, 1650];
+    let nextFireworkIndex = 0;
+
+    const startTime = performance.now();
+    const duration = 2200;
+
+    function frame(now) {
+      const elapsed = now - startTime;
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      while (nextFireworkIndex < fireworkTimes.length && elapsed >= fireworkTimes[nextFireworkIndex]) {
+        spawnFirework();
+        nextFireworkIndex++;
+      }
+
+      pieces.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += p.gravity;
+        p.rotation += p.spin;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        ctx.restore();
+      });
+
+      fireworks.forEach(s => {
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.05;
+        s.life -= s.fade;
+
+        if (s.life > 0) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(s.life, 0);
+          ctx.fillStyle = s.color;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+      fireworks = fireworks.filter(s => s.life > 0);
+
+      if (elapsed < duration) {
+        requestAnimationFrame(frame);
+      } else {
+        canvas.remove();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+})();
+</script>
+
+</body>
+</html>
