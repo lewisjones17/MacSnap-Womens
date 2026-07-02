@@ -1019,7 +1019,8 @@
       guideLabel: 'LINE UP MAC DIGITS (NOT SERIAL NO.)',
       whitelist: '0123456789ABCDEFabcdef',
       anchorPrefix: '00181C',
-      useQR: false
+      useQR: false,
+      ocrCrop: { widthFrac: 0.86, heightFrac: 0.22, yFrac: 0.50 } // narrow strip, tuned to Mac label position
     },
     tv: {
       value: null,
@@ -1036,7 +1037,8 @@
       guideLabel: 'LINE UP TV BARCODE',
       whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
       anchorPrefix: null,
-      useQR: true // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
+      useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
+      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop — label/text position varies a lot more than Mac's
     }
   };
 
@@ -1141,7 +1143,7 @@
 
       if (targets[activeTarget].useQR) {
         scanState.textContent = 'Scanning… hold steady';
-        startContinuousScan();
+        startContinuousScan(activeTarget);
       } else {
         scanState.textContent = 'Tap Capture when lined up';
       }
@@ -1230,6 +1232,117 @@
     }
   }
 
+  // Grabs a full-frame photo for upload/reference, independent of any crop.
+  function captureUploadPhoto(vidEl) {
+    const vw = vidEl.videoWidth, vh = vidEl.videoHeight;
+    const c = document.createElement('canvas');
+    c.width = vw;
+    c.height = vh;
+    c.getContext('2d').drawImage(vidEl, 0, 0, vw, vh);
+    return c.toDataURL('image/jpeg', 0.50);
+  }
+
+  function normalizeForCompare(s) {
+    return (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
+  // Loose match rather than strict equality: a barcode's decoded payload
+  // sometimes carries a couple of extra leading/trailing characters that
+  // aren't part of the printed human-readable text underneath (padding,
+  // check characters, etc.), so treat it as confirmed if either value
+  // fully contains the other once both are normalised.
+  function valuesMatch(a, b) {
+    const na = normalizeForCompare(a);
+    const nb = normalizeForCompare(b);
+    if (!na || !nb) return false;
+    if (na === nb) return true;
+    return na.includes(nb) || nb.includes(na);
+  }
+
+  // Reads whatever printed text is in the target's OCR crop region, using
+  // the same upscale + contrast-stretch approach as the main OCR fallback,
+  // but returns just the cleaned text rather than extracting/trimming to a
+  // fixed length — this is a confirmation check, not the primary read.
+  async function ocrReadDigits(targetKey, vidEl) {
+    const t = targets[targetKey];
+    const vw = vidEl.videoWidth, vh = vidEl.videoHeight;
+    const crop = t.ocrCrop;
+    const cropW = vw * crop.widthFrac;
+    const cropH = vh * crop.heightFrac;
+    const cropX = (vw - cropW) / 2;
+    const cropY = vh * crop.yFrac;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    cropCanvas.getContext('2d').drawImage(vidEl, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    const upscale = 2;
+    const procCanvas = document.createElement('canvas');
+    procCanvas.width = cropW * upscale;
+    procCanvas.height = cropH * upscale;
+    const pctx = procCanvas.getContext('2d');
+    pctx.imageSmoothingEnabled = true;
+    pctx.imageSmoothingQuality = 'high';
+    pctx.drawImage(cropCanvas, 0, 0, procCanvas.width, procCanvas.height);
+
+    const imgData = pctx.getImageData(0, 0, procCanvas.width, procCanvas.height);
+    const px = imgData.data;
+    let min = 255, max = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const gray = (px[i] + px[i+1] + px[i+2]) / 3;
+      if (gray < min) min = gray;
+      if (gray > max) max = gray;
+    }
+    const range = Math.max(max - min, 1);
+    for (let i = 0; i < px.length; i += 4) {
+      const gray = (px[i] + px[i+1] + px[i+2]) / 3;
+      const stretched = Math.round(((gray - min) / range) * 255);
+      px[i] = px[i+1] = px[i+2] = stretched;
+    }
+    pctx.putImageData(imgData, 0, 0);
+
+    const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
+    const { data } = await Tesseract.recognize(dataUrl, 'eng', { tessedit_char_whitelist: t.whitelist });
+    return (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
+  }
+
+  // Automated check: whenever a barcode/QR/DataMatrix decodes successfully,
+  // immediately OCR the printed text in the same frame and compare. If they
+  // agree, fill in the confirmed value. If they don't agree (or the printed
+  // text can't be read at all), fill "Failed" instead of trusting the
+  // decode blindly — the photo is still captured and uploaded either way,
+  // so the engineer can rescan, or submit as-is knowing the photo is on
+  // the sheet as a backup to check manually later.
+  async function handleZxingSuccess(targetKey, zxingValue) {
+    ocrBusy = true;
+    scanState.textContent = 'Confirming with printed digits…';
+
+    const uploadDataUrl = captureUploadPhoto(video);
+    let ocrText = '';
+    try {
+      ocrText = await ocrReadDigits(targetKey, video);
+    } catch (err) {
+      console.error('Confirm OCR error:', err);
+    }
+    ocrBusy = false;
+
+    const confirmed = ocrText && valuesMatch(zxingValue, ocrText);
+
+    if (confirmed) {
+      setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
+      targets[targetKey].metaTextEl.textContent = 'Captured & confirmed — barcode matches printed digits';
+      showToast('Captured & confirmed', true);
+    } else {
+      setTargetResult(targetKey, 'Failed', 'capture', uploadDataUrl);
+      targets[targetKey].metaTextEl.textContent = 'Barcode didn\u2019t match printed digits — rescan, or submit as-is (photo saved as backup)';
+      showToast('Could not confirm — rescan, or submit with photo as backup');
+    }
+
+    if (navigator.vibrate) navigator.vibrate(60);
+    closeScanUI();
+  }
+
   // Continuous scan loop — barcodes and 2D codes need repeated attempts
   // across many frames while the phone is held steady, not a single
   // tapped photo, so this polls in the background the moment the TV
@@ -1237,7 +1350,7 @@
   let continuousScanActive = false;
   let continuousScanHandle = null;
 
-  function startContinuousScan() {
+  function startContinuousScan(targetKey) {
     stopContinuousScan();
     continuousScanActive = true;
     continuousScanHandle = setInterval(async () => {
@@ -1248,18 +1361,7 @@
         continuousScanActive = false;
         clearInterval(continuousScanHandle);
         continuousScanHandle = null;
-
-        const vw = video.videoWidth, vh = video.videoHeight;
-        const uploadCanvas = document.createElement('canvas');
-        uploadCanvas.width = vw;
-        uploadCanvas.height = vh;
-        uploadCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
-        const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
-
-        setTargetResult('tv', value, 'capture', uploadDataUrl);
-        showToast('Barcode captured — check it\u2019s correct');
-        if (navigator.vibrate) navigator.vibrate(60);
-        closeScanUI();
+        await handleZxingSuccess(targetKey, value);
       }
     }, 350);
   }
@@ -1291,26 +1393,17 @@
         let qrValue = await tryQR();
         if (!qrValue) qrValue = await tryQRCropped();
         if (qrValue) {
-          // Build an upload photo from the full frame for reference
-          const uploadCanvas = document.createElement('canvas');
-          uploadCanvas.width = vw;
-          uploadCanvas.height = vh;
-          uploadCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
-          const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
-
-          setTargetResult(activeTarget, qrValue, 'capture', uploadDataUrl);
-          showToast('Barcode captured — check it\u2019s correct');
-          if (navigator.vibrate) navigator.vibrate(60);
-          closeScanUI();
+          await handleZxingSuccess(activeTarget, qrValue);
           return;
         }
       }
 
       // OCR fallback path (also the only path for the mac target)
-      const cropW = vw * 0.86;
-      const cropH = vh * 0.22;
+      const crop = t.ocrCrop;
+      const cropW = vw * crop.widthFrac;
+      const cropH = vh * crop.heightFrac;
       const cropX = (vw - cropW) / 2;
-      const cropY = (vh * 0.50);
+      const cropY = vh * crop.yFrac;
 
       captureCanvas.width = cropW;
       captureCanvas.height = cropH;
