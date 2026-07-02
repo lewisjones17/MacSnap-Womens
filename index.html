@@ -1082,6 +1082,7 @@
   }
 
   function closeScanUI() {
+    stopContinuousScan();
     activeTarget = null;
     scanButtonsRow.style.display = 'flex';
     btnCapture.style.display = 'none';
@@ -1135,9 +1136,15 @@
       guideBox.style.display = 'block';
       guideText.textContent = targets[activeTarget].guideLabel;
       scanState.style.display = 'block';
-      scanState.textContent = 'Tap Capture when lined up';
       scanning = true;
       btnCapture.style.display = 'block';
+
+      if (targets[activeTarget].useQR) {
+        scanState.textContent = 'Scanning… hold steady';
+        startContinuousScan();
+      } else {
+        scanState.textContent = 'Tap Capture when lined up';
+      }
 
     } catch (err) {
       if (err.name === 'NotAllowedError') showToast('Camera permission denied — check Safari settings');
@@ -1191,8 +1198,83 @@
     }
   }
 
+  // Second attempt: crop to the centre of frame and upscale 2x before
+  // decoding. A DataMatrix or Micro QR label held at normal scanning
+  // distance can occupy only a small fraction of the full video frame,
+  // which isn't enough pixel density for ZXing to resolve individual
+  // modules — cropping tighter and upscaling gives it more to work with,
+  // the same principle as the OCR upscale pipeline used for the Mac scan.
+  async function tryQRCropped() {
+    const reader = getZxingReader();
+    if (!reader) return null;
+
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const cropW = vw * 0.7;
+    const cropH = vh * 0.5;
+    const cropX = (vw - cropW) / 2;
+    const cropY = (vh - cropH) / 2;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW * 2;
+    cropCanvas.height = cropH * 2;
+    const cctx = cropCanvas.getContext('2d');
+    cctx.imageSmoothingEnabled = true;
+    cctx.imageSmoothingQuality = 'high';
+    cctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
+
+    try {
+      const result = reader.decodeFromCanvas(cropCanvas);
+      return result ? result.getText() : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // Continuous scan loop — barcodes and 2D codes need repeated attempts
+  // across many frames while the phone is held steady, not a single
+  // tapped photo, so this polls in the background the moment the TV
+  // Barcode camera opens and auto-captures the instant a code decodes.
+  let continuousScanActive = false;
+  let continuousScanHandle = null;
+
+  function startContinuousScan() {
+    stopContinuousScan();
+    continuousScanActive = true;
+    continuousScanHandle = setInterval(async () => {
+      if (!continuousScanActive || !scanning || ocrBusy) return;
+      let value = await tryQR();
+      if (!value) value = await tryQRCropped();
+      if (value) {
+        continuousScanActive = false;
+        clearInterval(continuousScanHandle);
+        continuousScanHandle = null;
+
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const uploadCanvas = document.createElement('canvas');
+        uploadCanvas.width = vw;
+        uploadCanvas.height = vh;
+        uploadCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
+        const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
+
+        setTargetResult('tv', value, 'capture', uploadDataUrl);
+        showToast('Barcode captured — check it\u2019s correct');
+        if (navigator.vibrate) navigator.vibrate(60);
+        closeScanUI();
+      }
+    }, 350);
+  }
+
+  function stopContinuousScan() {
+    continuousScanActive = false;
+    if (continuousScanHandle) {
+      clearInterval(continuousScanHandle);
+      continuousScanHandle = null;
+    }
+  }
+
   async function captureAndRead() {
     if (!scanning || ocrBusy || !activeTarget) return;
+    stopContinuousScan();
     const t = targets[activeTarget];
     ocrBusy = true;
     btnCapture.textContent = 'Reading…';
@@ -1206,7 +1288,8 @@
       // ZXing-first for targets that support it (TV barcode may be QR,
       // Micro QR, DataMatrix, or a 1D barcode)
       if (t.useQR) {
-        const qrValue = await tryQR();
+        let qrValue = await tryQR();
+        if (!qrValue) qrValue = await tryQRCropped();
         if (qrValue) {
           // Build an upload photo from the full frame for reference
           const uploadCanvas = document.createElement('canvas');
