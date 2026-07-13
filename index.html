@@ -811,7 +811,8 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.0/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest/umd/zxing-browser.min.js"></script>
 <script>
 (function () {
   // ==== TODO before deploying ====
@@ -1164,7 +1165,10 @@
   let zxingReader = null;
   function getZxingReader() {
     if (zxingReader) return zxingReader;
-    if (!window.ZXing) return null;
+    // BrowserMultiFormatReader lives in the separate @zxing/browser package
+    // (global ZXingBrowser) — BarcodeFormat/DecodeHintType are still from
+    // the core @zxing/library package (global ZXing).
+    if (!window.ZXingBrowser || !window.ZXing) return null;
     const wantedFormats = [
       'QR_CODE', 'MICRO_QR_CODE', 'DATA_MATRIX',
       'CODE_128', 'CODE_39', 'CODE_93', 'CODABAR', 'ITF',
@@ -1176,7 +1180,7 @@
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    zxingReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
     return zxingReader;
   }
 
@@ -1189,7 +1193,13 @@
   // compression blurs the sharp black/white bar edges a 1D barcode decoder
   // depends on — the final uploaded reference photo still uses JPEG 50%.
   async function decodeCanvasWithZxing(canvas) {
-    const reader = getZxingReader();
+    let reader;
+    try {
+      reader = getZxingReader();
+    } catch (err) {
+      console.error('ZXing reader construction failed:', err);
+      return null;
+    }
     if (!reader) return null;
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -1205,8 +1215,13 @@
       const result = await reader.decodeFromImageElement(img);
       return result ? result.getText() : null;
     } catch (err) {
-      // NotFoundException (no code in frame) or a load/decode failure —
-      // either way, no code found this attempt, fall through.
+      // NotFoundException is the normal "no code in this frame" case.
+      // Anything else is a real bug — log it so it's diagnosable instead
+      // of silently vanishing into another guess-and-check cycle.
+      const isNotFound = err && (err.name === 'NotFoundException' || /not found/i.test(err.message || ''));
+      if (!isNotFound) {
+        console.error('ZXing decode error (not a simple not-found):', err);
+      }
       return null;
     }
   }
