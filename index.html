@@ -1180,24 +1180,44 @@
     return zxingReader;
   }
 
+  // Shared decode helper — converts a canvas to an actual <img> element and
+  // decodes via decodeFromImageElement, which is the well-documented, stable
+  // ZXing API across versions. (decodeFromCanvas proved unreliable — it was
+  // silently failing on clean, well-lit, front-on barcodes, so every capture
+  // fell through to the OCR fallback instead of ever actually decoding.)
+  // PNG (lossless) is used for the decode input specifically because JPEG
+  // compression blurs the sharp black/white bar edges a 1D barcode decoder
+  // depends on — the final uploaded reference photo still uses JPEG 50%.
+  async function decodeCanvasWithZxing(canvas) {
+    const reader = getZxingReader();
+    if (!reader) return null;
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const img = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    img.src = dataUrl;
+
+    try {
+      await loaded;
+      const result = await reader.decodeFromImageElement(img);
+      return result ? result.getText() : null;
+    } catch (err) {
+      // NotFoundException (no code in frame) or a load/decode failure —
+      // either way, no code found this attempt, fall through.
+      return null;
+    }
+  }
+
   async function tryQR() {
     const vw = video.videoWidth, vh = video.videoHeight;
     captureCanvas.width = vw;
     captureCanvas.height = vh;
     const ctx = captureCanvas.getContext('2d');
     ctx.drawImage(video, 0, 0, vw, vh);
-
-    const reader = getZxingReader();
-    if (!reader) return null;
-
-    try {
-      const result = reader.decodeFromCanvas(captureCanvas);
-      return result ? result.getText() : null;
-    } catch (err) {
-      // ZXing throws (NotFoundException etc.) when no code is found in
-      // frame — that's expected/normal, just fall through to OCR.
-      return null;
-    }
+    return decodeCanvasWithZxing(captureCanvas);
   }
 
   // Second attempt: crop to the centre of frame and upscale 2x before
@@ -1207,9 +1227,6 @@
   // modules — cropping tighter and upscaling gives it more to work with,
   // the same principle as the OCR upscale pipeline used for the Mac scan.
   async function tryQRCropped() {
-    const reader = getZxingReader();
-    if (!reader) return null;
-
     const vw = video.videoWidth, vh = video.videoHeight;
     const cropW = vw * 0.7;
     const cropH = vh * 0.5;
@@ -1224,12 +1241,7 @@
     cctx.imageSmoothingQuality = 'high';
     cctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
 
-    try {
-      const result = reader.decodeFromCanvas(cropCanvas);
-      return result ? result.getText() : null;
-    } catch (err) {
-      return null;
-    }
+    return decodeCanvasWithZxing(cropCanvas);
   }
 
   // Grabs a full-frame photo for upload/reference, independent of any crop.
