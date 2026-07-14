@@ -792,7 +792,7 @@
   <!-- Shared camera block — one <video> element, moved between page1-camera-slot
        and page2-camera-slot rather than duplicated, so the live stream carries
        over seamlessly when moving from the first scan's page to the second's. -->
-  <div id="camera-block">
+  <div id="camera-block" style="display:none;">
     <div id="scan-region">
       <video id="video" playsinline muted></video>
       <canvas id="capture-canvas" style="display:none;"></canvas>
@@ -822,7 +822,6 @@
 
     <div class="camera-actions">
       <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
-      <button class="btn-ghost" id="btn-camera-done" style="display:none; width:100%; justify-content:center;">Done scanning this one</button>
     </div>
 
     <div class="actions" id="camera-tool-actions" style="display:none;">
@@ -840,7 +839,7 @@
 
   <!-- Result rows — one lives in page1-row-slot, the other in page2-row-slot,
        moved there by JS depending on which target was scanned first. -->
-  <div class="result-row" id="mac-row">
+  <div class="result-row" id="mac-row" style="display:none;">
     <div class="result-row-label">
       <span>Exterity</span>
       <span class="row-actions">
@@ -860,7 +859,7 @@
     </div>
   </div>
 
-  <div class="result-row" id="tv-row">
+  <div class="result-row" id="tv-row" style="display:none;">
     <div class="result-row-label">
       <span>TV Barcode</span>
       <span class="row-actions">
@@ -1173,7 +1172,6 @@
   const scanState         = document.getElementById('scan-state');
   const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
-  const btnCameraDone     = document.getElementById('btn-camera-done');
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
   const zoomWrap           = document.getElementById('zoom-wrap');
@@ -1314,7 +1312,9 @@
     const cameraSlot = pageName === 'page1' ? page1CameraSlot : page2CameraSlot;
     const rowSlot = pageName === 'page1' ? page1RowSlot : page2RowSlot;
     cameraSlot.appendChild(cameraBlock);
+    cameraBlock.style.display = '';
     rowSlot.appendChild(targets[key].rowEl);
+    targets[key].rowEl.style.display = '';
   }
 
   function openScanUI(key) {
@@ -1338,7 +1338,6 @@
     if (scanning) {
       debugLog('openScanUI: camera already running, resuming preview only');
       if (video.paused) video.play().catch(() => {});
-      btnCameraDone.style.display = 'block';
       return;
     }
     debugLog('openScanUI: calling startCamera()');
@@ -1348,7 +1347,6 @@
   function closeScanUI() {
     activeTarget = null;
     btnCapture.style.display = 'none';
-    btnCameraDone.style.display = 'none';
     cameraToolActions.style.display = 'none';
     zoomWrap.style.display = 'none';
     placeholder.style.display = 'flex';
@@ -1394,6 +1392,10 @@
     } else {
       page2TriggerWrap.style.display = 'flex';
     }
+    // Re-apply after the camera stream settles — opening it async can
+    // shift page layout/height and undo the scroll goToPage() just did.
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'auto' }), 150);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'auto' }), 500);
   }
 
   btnPage1Next.addEventListener('click', () => goToPage2(true));
@@ -1413,11 +1415,6 @@
     page1Nav.style.display = 'flex';
     btnPage1Next.textContent = 'Next: Scan ' + targets[secondTarget].label + ' \u2192';
   }
-
-  btnCameraDone.addEventListener('click', () => {
-    closeScanUI();
-    if (currentPage === 'page1') showPage1Nav();
-  });
 
   async function startCamera() {
     if (scanning) {
@@ -1457,18 +1454,18 @@
         }
         // Zoom — only exposed by some browsers (notably not iOS Safari);
         // shown only when the camera actually reports zoom capability.
-        // Defaults to 35% of the way along the available range, applied
-        // as a real constraint (not just shown on the slider) so labels
-        // fill more of the frame right from the start. The slider's
-        // minimum is clamped to this same point — zooming out further
-        // isn't allowed, only in from here.
+        // No default is auto-applied on open — on multi-lens iPhones
+        // (e.g. 17 Pro), forcing a zoom constraint the instant the stream
+        // starts was triggering an actual physical lens swap (ultra-wide
+        // / wide / telephoto), which is jarring and not what "zoom" should
+        // do here. The slider is manual-only now, full natural range —
+        // whatever the camera naturally opens on stays put until the
+        // person actually drags it themselves.
         if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
-          const defaultZoom = caps.zoom.min + 0.35 * (caps.zoom.max - caps.zoom.min);
-          zoomSlider.min = defaultZoom;
+          zoomSlider.min = caps.zoom.min;
           zoomSlider.max = caps.zoom.max;
           zoomSlider.step = caps.zoom.step || 0.1;
-          zoomSlider.value = defaultZoom;
-          try { await track.applyConstraints({ advanced: [{ zoom: defaultZoom }] }); } catch (e) {}
+          zoomSlider.value = track.getSettings ? (track.getSettings().zoom || caps.zoom.min) : caps.zoom.min;
           zoomWrap.style.display = 'flex';
           cameraToolActions.style.display = 'flex';
         }
@@ -1482,7 +1479,6 @@
       scanState.style.display = 'block';
       scanning = true;
       btnCapture.style.display = 'block';
-      btnCameraDone.style.display = 'block';
 
     } catch (err) {
       debugLog('startCamera: FAILED', (err && err.name) + ': ' + (err && err.message));
