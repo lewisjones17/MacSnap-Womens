@@ -1846,6 +1846,8 @@
     scanState.textContent = 'Tap Capture to try again, or continue below';
     if (currentPage === 'page2') {
       setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+    } else if (currentPage === 'page1') {
+      setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
     }
   }
 
@@ -1970,6 +1972,8 @@
         scanState.textContent = 'Tap Capture to try again, or continue below';
         if (currentPage === 'page2') {
           setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+        } else if (currentPage === 'page1') {
+          setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         }
       } else {
         showToast('Could not read it clearly — try again or type it');
