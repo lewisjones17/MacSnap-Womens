@@ -1458,6 +1458,32 @@
     return na.includes(nb) || nb.includes(na);
   }
 
+  // Tesseract reads the whole crop as one blob, including any barcode/
+  // DataMatrix graphic sitting in it — which produces low-confidence
+  // garbage words mixed in with the real, higher-confidence printed text.
+  // Keeping only words above a confidence threshold (and dropping the
+  // noise) reads much cleaner than using the raw concatenated text.
+  function extractConfidentText(data, whitelist) {
+    const whitelistRe = new RegExp('[^' + whitelist.toUpperCase() + ']', 'g');
+    let result;
+    if (data.words && data.words.length) {
+      const confident = data.words
+        .filter(w => w.confidence >= 55 && w.text && w.text.trim().length > 0)
+        .map(w => w.text.toUpperCase().replace(whitelistRe, ''))
+        .filter(w => w.length > 0);
+      if (confident.length) {
+        result = confident.join('');
+        debugLog('extractConfidentText: used word-confidence filter', { raw: (data.text||'').slice(0,60), confident: result });
+        return result;
+      }
+    }
+    // Fall back to the raw blob if word-level data isn't available or
+    // nothing cleared the confidence bar.
+    result = (data.text || '').toUpperCase().replace(whitelistRe, '');
+    debugLog('extractConfidentText: fell back to raw blob (no confident words)', result);
+    return result;
+  }
+
   // Reads whatever printed text is in the target's OCR crop region, using
   // the same upscale + contrast-stretch approach as the main OCR fallback,
   // but returns just the cleaned text rather than extracting/trimming to a
@@ -1503,7 +1529,7 @@
 
     const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
     const { data } = await Tesseract.recognize(dataUrl, 'eng', { tessedit_char_whitelist: t.whitelist });
-    return (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
+    return extractConfidentText(data, t.whitelist);
   }
 
   // Automated check: whenever a barcode/QR/DataMatrix decodes successfully,
@@ -1639,7 +1665,16 @@
         tessedit_char_whitelist: t.whitelist,
       });
 
-      const cleaned = (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
+      // TV labels often have a barcode/DataMatrix graphic sitting right in
+      // the OCR crop alongside the real text, which Tesseract happily
+      // "reads" as garbled extra characters if we just take the raw blob.
+      // Word-level confidence filtering cuts that out. Mac's crop is a
+      // tight, tuned strip with no graphic in it and this already works
+      // reliably, so leave its extraction exactly as it was — no reason
+      // to risk it.
+      const cleaned = activeTarget === 'tv'
+        ? extractConfidentText(data, t.whitelist)
+        : (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
 
       let finalValue;
       if (t.anchorPrefix) {
