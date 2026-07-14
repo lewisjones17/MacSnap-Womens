@@ -1303,7 +1303,7 @@
     page2.classList.toggle('show', pageName === 'page2');
     pageDot1.classList.toggle('active', pageName === 'page1');
     pageDot2.classList.toggle('active', pageName === 'page2');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
   // Moves the shared camera block and the given target's result row into
@@ -1457,14 +1457,16 @@
         }
         // Zoom — only exposed by some browsers (notably not iOS Safari);
         // shown only when the camera actually reports zoom capability.
-        // Defaults to 20% of the way along the available range, applied
+        // Defaults to 35% of the way along the available range, applied
         // as a real constraint (not just shown on the slider) so labels
-        // fill more of the frame right from the start.
+        // fill more of the frame right from the start. The slider's
+        // minimum is clamped to this same point — zooming out further
+        // isn't allowed, only in from here.
         if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
-          zoomSlider.min = caps.zoom.min;
+          const defaultZoom = caps.zoom.min + 0.35 * (caps.zoom.max - caps.zoom.min);
+          zoomSlider.min = defaultZoom;
           zoomSlider.max = caps.zoom.max;
           zoomSlider.step = caps.zoom.step || 0.1;
-          const defaultZoom = caps.zoom.min + 0.2 * (caps.zoom.max - caps.zoom.min);
           zoomSlider.value = defaultZoom;
           try { await track.applyConstraints({ advanced: [{ zoom: defaultZoom }] }); } catch (e) {}
           zoomWrap.style.display = 'flex';
@@ -2091,11 +2093,16 @@
       const macApplies = isExterityTicked();
       const tvApplies = isAnyTvSizeTicked();
 
-      const macPhotoLink = macApplies ? await uploadPhoto(targets.mac.photo, 'mac_scan') : null;
-      const tvPhotoLink  = tvApplies  ? await uploadPhoto(targets.tv.photo, 'tv_scan')   : null;
+      // Photo upload is independent of the equipment tick — if a photo
+      // was actually captured, upload it regardless. The tick still
+      // controls whether the scanned VALUE gets included in the row (via
+      // buildPayload below), but a real photo shouldn't get silently
+      // dropped just because a checkbox was missed.
+      const macPhotoLink = await uploadPhoto(targets.mac.photo, 'mac_scan');
+      const tvPhotoLink  = await uploadPhoto(targets.tv.photo, 'tv_scan');
 
-      const macPhotoFailed = macApplies && targets.mac.photo && !macPhotoLink;
-      const tvPhotoFailed  = tvApplies  && targets.tv.photo  && !tvPhotoLink;
+      const macPhotoFailed = targets.mac.photo && !macPhotoLink;
+      const tvPhotoFailed  = targets.tv.photo  && !tvPhotoLink;
       if (macPhotoFailed || tvPhotoFailed) {
         const which = [macPhotoFailed && 'Exterity', tvPhotoFailed && 'TV'].filter(Boolean).join(' and ');
         showToast(which + ' photo failed to upload after retrying — submitting without it');
