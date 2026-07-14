@@ -1228,7 +1228,7 @@
       anchorPrefix: null,
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
       ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop — label/text position varies a lot more than Mac's
-      uploadCropped: true, // cropped-to-barcode upload photo — smaller payload, reliable upload
+      uploadCropped: false, // full-frame upload photo, same as Exterity — the 25% JPEG quality keeps payload size small enough without cropping
       uploadCrop: { widthFrac: 0.55, heightFrac: 0.22, yFrac: 0.39 }, // genuinely tight — the OCR crop above is nearly full-frame, too big to fix the payload-size issue
       rotateDeg: -90 // saved photo rotated 90° counter-clockwise, same as Exterity
     }
@@ -1844,6 +1844,9 @@
 
     if (navigator.vibrate) navigator.vibrate(60);
     scanState.textContent = 'Tap Capture to try again, or continue below';
+    if (currentPage === 'page2') {
+      setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+    }
   }
 
   async function captureAndRead() {
@@ -1965,6 +1968,9 @@
         }
         if (navigator.vibrate) navigator.vibrate(60);
         scanState.textContent = 'Tap Capture to try again, or continue below';
+        if (currentPage === 'page2') {
+          setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+        }
       } else {
         showToast('Could not read it clearly — try again or type it');
         scanState.textContent = 'Tap Capture when lined up';
@@ -2031,6 +2037,7 @@
     updateSubmitButtonState();
     btnSubmit.classList.add('ready-to-send');
     showToast('Select the reason(s), then tap Send to finish');
+    setTimeout(() => reasonsSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   });
 
   function isExterityTicked() {
