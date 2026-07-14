@@ -280,27 +280,6 @@
 
   #placeholder svg { width: 36px; height: 36px; opacity: 0.5; }
 
-  .scan-buttons-row {
-    display: flex;
-    gap: 10px;
-  }
-
-  .scan-target-btn {
-    flex: 1;
-    padding: 15px 10px;
-    font-size: 14px;
-    line-height: 1.3;
-  }
-
-  .scan-target-btn .sub {
-    display: block;
-    font-size: 10px;
-    font-weight: 600;
-    opacity: 0.75;
-    text-transform: none;
-    margin-top: 2px;
-  }
-
   .result-row {
     background: var(--sand);
     color: var(--ink);
@@ -708,12 +687,9 @@
     </div>
 
     <div class="camera-actions">
-      <div class="scan-buttons-row" id="scan-buttons-row">
-        <button class="btn-primary scan-target-btn" id="btn-scan-mac">Scan Exterity Mac</button>
-        <button class="btn-primary scan-target-btn" id="btn-scan-tv">Scan TV Barcode</button>
-      </div>
+      <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
       <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
-      <button class="btn-secondary btn-small-full" id="btn-cancel-scan" style="display:none;">Cancel</button>
+      <button class="btn-secondary btn-small-full" id="btn-done-scan" style="display:none;">Done</button>
     </div>
 
     <div class="actions" id="camera-tool-actions" style="display:none;">
@@ -722,26 +698,9 @@
           <path d="M9 2h6a1 1 0 0 1 1 1v3.382a2 2 0 0 1-.553 1.382L14 9.5V20a2 2 0 0 1-2 2 2 2 0 0 1-2-2V9.5L8.553 7.764A2 2 0 0 1 8 6.382V3a1 1 0 0 1 1-1z"/>
         </svg>
       </button>
-    </div>
-
-    <!-- Exterity Mac result row -->
-    <div class="result-row" id="mac-row">
-      <div class="result-row-label">
-        <span>Exterity Mac</span>
-        <span class="row-actions">
-          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </span>
-      </div>
-      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
-      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
-      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
-      <div class="manual-row" id="mac-manual-row">
-        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
-        <button class="btn-primary" id="mac-manual-use">Use</button>
+      <div id="zoom-wrap" style="display:none; flex:1; display:flex; align-items:center; gap:8px;">
+        <span style="font-size:11px; color:var(--grey); font-weight:700; flex:none;">ZOOM</span>
+        <input type="range" id="zoom-slider" min="1" max="1" step="0.1" value="1" style="flex:1;">
       </div>
     </div>
 
@@ -766,8 +725,31 @@
       </div>
     </div>
 
+    <button class="btn-primary btn-large" id="btn-scan-mac" style="margin-top:2px;">Scan Exterity Mac</button>
+
+    <!-- Exterity Mac result row -->
+    <div class="result-row" id="mac-row">
+      <div class="result-row-label">
+        <span>Exterity Mac</span>
+        <span class="row-actions">
+          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
+      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
+      <div class="manual-row" id="mac-manual-row">
+        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
+        <button class="btn-primary" id="mac-manual-use">Use</button>
+      </div>
+    </div>
+
     <div id="equipment-section" class="form-section">
-      <div class="section-label">Location (Number on plan or describe!)</div>
+      <div class="section-label">Location (Number on plan or describe!) — required</div>
       <input id="plan-location-input" type="text" placeholder="e.g. 12, or describe the spot" autocomplete="off" style="margin-bottom:14px;">
       <div class="section-label">Equipment installed</div>
       <label class="check-row"><input type="checkbox" value="43 inch Tv" class="equip-check tv-size-check"> 43 inch Tv</label>
@@ -869,6 +851,7 @@
     installerTag.style.display = 'inline';
     installerTag.innerHTML = 'Hi, ' + session.name + '<button id="btn-new-job">new job</button><button id="btn-change-name">reset</button>';
     document.getElementById('btn-new-job').addEventListener('click', () => {
+      resetFormState();
       hideAllGates();
       updateGate.classList.remove('hidden');
       jobInput2.value = session.job || '';
@@ -974,17 +957,19 @@
   // ---------------------------------------------------------------
   const video           = document.getElementById('video');
   const captureCanvas   = document.getElementById('capture-canvas');
+  const scanRegion        = document.getElementById('scan-region');
   const placeholder      = document.getElementById('placeholder');
   const guideBox          = document.getElementById('guide-box');
   const guideText          = document.getElementById('guide-text');
   const scanState         = document.getElementById('scan-state');
-  const scanButtonsRow    = document.getElementById('scan-buttons-row');
   const btnScanMac        = document.getElementById('btn-scan-mac');
   const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
-  const btnCancelScan     = document.getElementById('btn-cancel-scan');
+  const btnDoneScan       = document.getElementById('btn-done-scan');
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
+  const zoomWrap           = document.getElementById('zoom-wrap');
+  const zoomSlider         = document.getElementById('zoom-slider');
   const toast              = document.getElementById('toast');
   const btnSubmit          = document.getElementById('btn-submit');
   const equipmentSection  = document.getElementById('equipment-section');
@@ -1052,8 +1037,10 @@
   }
 
   function updateSubmitButtonState() {
-    btnSubmit.disabled = !jobComplete;
+    btnSubmit.disabled = !jobComplete || !planLocationInput.value.trim();
   }
+
+  planLocationInput.addEventListener('input', updateSubmitButtonState);
 
   function setTargetResult(key, value, source, photoDataUrl) {
     const t = targets[key];
@@ -1079,18 +1066,20 @@
 
   function openScanUI(key) {
     activeTarget = key;
-    scanButtonsRow.style.display = 'none';
-    btnCancelScan.style.display = 'block';
+    btnScanTv.style.display = 'none';
+    btnScanMac.style.display = 'none';
+    btnDoneScan.style.display = 'block';
     startCamera();
   }
 
   function closeScanUI() {
-    stopContinuousScan();
     activeTarget = null;
-    scanButtonsRow.style.display = 'flex';
+    btnScanTv.style.display = 'block';
+    btnScanMac.style.display = 'block';
     btnCapture.style.display = 'none';
-    btnCancelScan.style.display = 'none';
+    btnDoneScan.style.display = 'none';
     cameraToolActions.style.display = 'none';
+    zoomWrap.style.display = 'none';
     placeholder.style.display = 'flex';
     guideBox.style.display = 'none';
     scanState.style.display = 'none';
@@ -1099,9 +1088,12 @@
     btnTorch.style.display = 'none';
   }
 
-  btnScanMac.addEventListener('click', () => checkIdleThenRun(() => openScanUI('mac')));
+  btnScanMac.addEventListener('click', () => checkIdleThenRun(() => {
+    openScanUI('mac');
+    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
   btnScanTv.addEventListener('click', () => checkIdleThenRun(() => openScanUI('tv')));
-  btnCancelScan.addEventListener('click', closeScanUI);
+  btnDoneScan.addEventListener('click', closeScanUI);
 
   async function startCamera() {
     if (scanning) return;
@@ -1130,6 +1122,16 @@
           btnTorch.style.display = 'flex';
           cameraToolActions.style.display = 'flex';
         }
+        // Zoom — only exposed by some browsers (notably not iOS Safari);
+        // shown only when the camera actually reports zoom capability.
+        if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
+          zoomSlider.min = caps.zoom.min;
+          zoomSlider.max = caps.zoom.max;
+          zoomSlider.step = caps.zoom.step || 0.1;
+          zoomSlider.value = track.getSettings ? (track.getSettings().zoom || caps.zoom.min) : caps.zoom.min;
+          zoomWrap.style.display = 'flex';
+          cameraToolActions.style.display = 'flex';
+        }
       }
 
       video.srcObject = stream;
@@ -1151,6 +1153,13 @@
       closeScanUI();
     }
   }
+
+  zoomSlider.addEventListener('input', () => {
+    if (!activeTrack) return;
+    activeTrack.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] }).catch(() => {});
+  });
+
+
 
   // ZXing reader configured to try every format we might realistically see
   // on a TV barcode/QR label — standard QR, Micro QR, DataMatrix, and the
@@ -1364,43 +1373,11 @@
     }
 
     if (navigator.vibrate) navigator.vibrate(60);
-    closeScanUI();
-  }
-
-  // Continuous scan loop — barcodes and 2D codes need repeated attempts
-  // across many frames while the phone is held steady, not a single
-  // tapped photo, so this polls in the background the moment the TV
-  // Barcode camera opens and auto-captures the instant a code decodes.
-  let continuousScanActive = false;
-  let continuousScanHandle = null;
-
-  function startContinuousScan(targetKey) {
-    stopContinuousScan();
-    continuousScanActive = true;
-    continuousScanHandle = setInterval(async () => {
-      if (!continuousScanActive || !scanning || ocrBusy) return;
-      let value = await tryQR();
-      if (!value) value = await tryQRCropped();
-      if (value) {
-        continuousScanActive = false;
-        clearInterval(continuousScanHandle);
-        continuousScanHandle = null;
-        await handleZxingSuccess(targetKey, value);
-      }
-    }, 350);
-  }
-
-  function stopContinuousScan() {
-    continuousScanActive = false;
-    if (continuousScanHandle) {
-      clearInterval(continuousScanHandle);
-      continuousScanHandle = null;
-    }
+    scanState.textContent = 'Tap Capture to try again, or Done when finished';
   }
 
   async function captureAndRead() {
     if (!scanning || ocrBusy || !activeTarget) return;
-    stopContinuousScan();
     const t = targets[activeTarget];
     ocrBusy = true;
     btnCapture.textContent = 'Reading…';
@@ -1489,7 +1466,7 @@
         setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
         showToast('Captured — check it\u2019s correct');
         if (navigator.vibrate) navigator.vibrate(60);
-        closeScanUI();
+        scanState.textContent = 'Tap Capture to try again, or Done when finished';
       } else {
         showToast('Could not read it clearly — try again or type it');
         scanState.textContent = 'Tap Capture when lined up';
@@ -1623,6 +1600,11 @@
 
   async function submitJob() {
     if (!jobComplete || submitting) return;
+    if (!planLocationInput.value.trim()) {
+      showToast('Location is required before sending');
+      planLocationInput.focus();
+      return;
+    }
     submitting = true;
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Uploading photos…';
@@ -1674,15 +1656,16 @@
     t.manualInput.value = '';
   }
 
-  function showSubmitSuccess() {
-    const wasComplete = (jobComplete === 'Yes');
-    lastActivityTime = Date.now();
-
+  // Wipes all in-progress scan/equipment/location state back to a clean
+  // slate. Used both after a successful submit and whenever the engineer
+  // starts a new job — carrying over half-filled fields from a previous
+  // TV/job into the next one is exactly the kind of mistake this exists
+  // to prevent.
+  function resetFormState() {
     resetTarget('mac');
     resetTarget('tv');
 
     jobComplete = null;
-    submitting = false;
 
     document.querySelectorAll('.reason-check').forEach(cb => cb.checked = false);
     document.querySelectorAll('.tv-size-check').forEach(cb => cb.checked = false);
@@ -1703,6 +1686,14 @@
     btnSubmit.textContent = 'Send to install form →';
 
     closeScanUI();
+  }
+
+  function showSubmitSuccess() {
+    const wasComplete = (jobComplete === 'Yes');
+    lastActivityTime = Date.now();
+    submitting = false;
+
+    resetFormState();
 
     showToast('Submitted — ready for the next one', true);
     if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
