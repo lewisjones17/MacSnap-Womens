@@ -1192,8 +1192,13 @@
 
     // If the camera's already running (switching target mid-session via
     // Next), just update the UI above — no need to tear down and
-    // reacquire the camera stream, that would be slow and jarring.
-    if (scanning) return;
+    // reacquire the camera stream, that would be slow and jarring. Do
+    // resume the live preview though, in case it's sitting paused/frozen
+    // from a previous capture on the other target.
+    if (scanning) {
+      if (video.paused) video.play().catch(() => {});
+      return;
+    }
     startCamera();
   }
 
@@ -1369,12 +1374,36 @@
     }
   }
 
-  async function tryQR() {
+  // Works whether source is the live <video> or a frozen still-frame canvas.
+  function sourceDims(source) {
+    return {
+      w: source.videoWidth || source.width,
+      h: source.videoHeight || source.height
+    };
+  }
+
+  // Grabs one still frame from the live video at this exact moment. Every
+  // decode/OCR/upload step for this Capture tap then reads from this same
+  // frozen image, rather than each step separately re-drawing the live
+  // video — which, being live, can shift slightly between async steps
+  // (autofocus settling, hand movement) and mean ZXing, the OCR confirm
+  // check, and the uploaded photo were silently looking at three subtly
+  // different images instead of one consistent capture.
+  function grabStillFrame() {
     const vw = video.videoWidth, vh = video.videoHeight;
+    const c = document.createElement('canvas');
+    c.width = vw;
+    c.height = vh;
+    c.getContext('2d').drawImage(video, 0, 0, vw, vh);
+    return c;
+  }
+
+  async function tryQR(source) {
+    const { w: vw, h: vh } = sourceDims(source);
     captureCanvas.width = vw;
     captureCanvas.height = vh;
     const ctx = captureCanvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, vw, vh);
+    ctx.drawImage(source, 0, 0, vw, vh);
     return decodeCanvasWithZxing(captureCanvas, 'full-frame');
   }
 
@@ -1384,8 +1413,8 @@
   // which isn't enough pixel density for ZXing to resolve individual
   // modules — cropping tighter and upscaling gives it more to work with,
   // the same principle as the OCR upscale pipeline used for the Mac scan.
-  async function tryQRCropped() {
-    const vw = video.videoWidth, vh = video.videoHeight;
+  async function tryQRCropped(source) {
+    const { w: vw, h: vh } = sourceDims(source);
     const cropW = vw * 0.7;
     const cropH = vh * 0.5;
     const cropX = (vw - cropW) / 2;
@@ -1397,18 +1426,18 @@
     const cctx = cropCanvas.getContext('2d');
     cctx.imageSmoothingEnabled = true;
     cctx.imageSmoothingQuality = 'high';
-    cctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
+    cctx.drawImage(source, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
 
     return decodeCanvasWithZxing(cropCanvas, 'cropped-2x');
   }
 
   // Grabs a full-frame photo for upload/reference, independent of any crop.
-  function captureUploadPhoto(vidEl) {
-    const vw = vidEl.videoWidth, vh = vidEl.videoHeight;
+  function captureUploadPhoto(source) {
+    const { w: vw, h: vh } = sourceDims(source);
     const c = document.createElement('canvas');
     c.width = vw;
     c.height = vh;
-    c.getContext('2d').drawImage(vidEl, 0, 0, vw, vh);
+    c.getContext('2d').drawImage(source, 0, 0, vw, vh);
     return c.toDataURL('image/jpeg', 0.50);
   }
 
@@ -1433,9 +1462,9 @@
   // the same upscale + contrast-stretch approach as the main OCR fallback,
   // but returns just the cleaned text rather than extracting/trimming to a
   // fixed length — this is a confirmation check, not the primary read.
-  async function ocrReadDigits(targetKey, vidEl) {
+  async function ocrReadDigits(targetKey, source) {
     const t = targets[targetKey];
-    const vw = vidEl.videoWidth, vh = vidEl.videoHeight;
+    const { w: vw, h: vh } = sourceDims(source);
     const crop = t.ocrCrop;
     const cropW = vw * crop.widthFrac;
     const cropH = vh * crop.heightFrac;
@@ -1445,7 +1474,7 @@
     const cropCanvas = document.createElement('canvas');
     cropCanvas.width = cropW;
     cropCanvas.height = cropH;
-    cropCanvas.getContext('2d').drawImage(vidEl, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    cropCanvas.getContext('2d').drawImage(source, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
     const upscale = 2;
     const procCanvas = document.createElement('canvas');
@@ -1489,14 +1518,14 @@
   // graphic itself (dense black/white modules read as garbled letters).
   // That kind of noise shouldn't veto a good decode; only a short,
   // plausible OCR read that actually disagrees should.
-  async function handleZxingSuccess(targetKey, zxingValue) {
+  async function handleZxingSuccess(targetKey, zxingValue, stillFrame) {
     ocrBusy = true;
     scanState.textContent = 'Confirming with printed digits…';
 
-    const uploadDataUrl = captureUploadPhoto(video);
+    const uploadDataUrl = captureUploadPhoto(stillFrame);
     let ocrText = '';
     try {
-      ocrText = await ocrReadDigits(targetKey, video);
+      ocrText = await ocrReadDigits(targetKey, stillFrame);
     } catch (err) {
       console.error('Confirm OCR error:', err);
     }
@@ -1536,18 +1565,26 @@
     scanState.textContent = 'Reading…';
     debugLog('--- Capture tapped ---', 'target=' + activeTarget);
 
+    // Freeze one still frame right now — every step below (ZXing decode
+    // attempts, OCR confirm, the uploaded reference photo) reads from this
+    // same frozen image, not the live video, so they're all guaranteed to
+    // be looking at exactly what was on screen the instant Capture was
+    // pressed rather than each separately re-grabbing a live frame that
+    // may have shifted slightly moments later.
+    const stillFrame = grabStillFrame();
+
     try {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+      const vw = stillFrame.width;
+      const vh = stillFrame.height;
 
       // ZXing-first for targets that support it (TV barcode may be QR,
       // Micro QR, DataMatrix, or a 1D barcode)
       if (t.useQR) {
-        let qrValue = await tryQR();
-        if (!qrValue) qrValue = await tryQRCropped();
+        let qrValue = await tryQR(stillFrame);
+        if (!qrValue) qrValue = await tryQRCropped(stillFrame);
         if (qrValue) {
           debugLog('captureAndRead: ZXing succeeded, routing through confirm check', qrValue);
-          await handleZxingSuccess(activeTarget, qrValue);
+          await handleZxingSuccess(activeTarget, qrValue, stillFrame);
           return;
         }
         debugLog('captureAndRead: ZXing found nothing (both attempts), falling to OCR fallback');
@@ -1563,7 +1600,7 @@
       captureCanvas.width = cropW;
       captureCanvas.height = cropH;
       const ctx = captureCanvas.getContext('2d');
-      ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      ctx.drawImage(stillFrame, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
       const upscale = 2;
       const procCanvas = document.createElement('canvas');
