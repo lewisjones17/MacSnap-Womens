@@ -978,6 +978,37 @@
   const confirmGate  = document.getElementById('confirm-gate');
   const updateGate   = document.getElementById('update-gate');
 
+  // Page/screen elements — declared up here (not further down with the
+  // rest of the scan engine) because hideAllGates() below references
+  // summaryGate, and hideAllGates() gets called during initial page
+  // setup — if summaryGate were still declared later in the file, that
+  // early call would hit it before its declaration had run (temporal
+  // dead zone) and silently break the entire script.
+  const cameraBlock       = document.getElementById('camera-block');
+  const page1             = document.getElementById('page1');
+  const page2             = document.getElementById('page2');
+  const page1Triggers     = document.getElementById('page1-triggers');
+  const page1CameraSlot   = document.getElementById('page1-camera-slot');
+  const page1RowSlot      = document.getElementById('page1-row-slot');
+  const page1Nav          = document.getElementById('page1-nav');
+  const btnPage1Next      = document.getElementById('btn-page1-next');
+  const btnPage1Skip      = document.getElementById('btn-page1-skip');
+  const page2TriggerWrap  = document.getElementById('page2-trigger-wrap');
+  const btnScanSecond     = document.getElementById('btn-scan-second');
+  const page2CameraSlot   = document.getElementById('page2-camera-slot');
+  const page2RowSlot      = document.getElementById('page2-row-slot');
+  const jobBar             = document.getElementById('job-bar');
+  const jobBarNumber      = document.getElementById('job-bar-number');
+  const jobBarVenue       = document.getElementById('job-bar-venue');
+  const pageDot1          = document.getElementById('page-dot-1');
+  const pageDot2          = document.getElementById('page-dot-2');
+  const summaryGate       = document.getElementById('summary-gate');
+  const summaryJobDisplay = document.getElementById('summary-job-display');
+  const summaryVenueDisplay = document.getElementById('summary-venue-display');
+  const btnSummaryNext    = document.getElementById('btn-summary-next');
+  const btnSummaryNewJob  = document.getElementById('btn-summary-new-job');
+  const updateGateHeading = document.getElementById('update-gate-heading');
+
   const nameInput    = document.getElementById('name-input');
   const jobInput     = document.getElementById('job-input');
   const venueInput   = document.getElementById('venue-input');
@@ -1156,32 +1187,6 @@
   const otherInput        = document.getElementById('other-input');
   const planLocationInput = document.getElementById('plan-location-input');
   const equipOtherInput   = document.getElementById('equip-other-input');
-
-  // Page/screen elements
-  const cameraBlock       = document.getElementById('camera-block');
-  const page1             = document.getElementById('page1');
-  const page2             = document.getElementById('page2');
-  const page1Triggers     = document.getElementById('page1-triggers');
-  const page1CameraSlot   = document.getElementById('page1-camera-slot');
-  const page1RowSlot      = document.getElementById('page1-row-slot');
-  const page1Nav          = document.getElementById('page1-nav');
-  const btnPage1Next      = document.getElementById('btn-page1-next');
-  const btnPage1Skip      = document.getElementById('btn-page1-skip');
-  const page2TriggerWrap  = document.getElementById('page2-trigger-wrap');
-  const btnScanSecond     = document.getElementById('btn-scan-second');
-  const page2CameraSlot   = document.getElementById('page2-camera-slot');
-  const page2RowSlot      = document.getElementById('page2-row-slot');
-  const jobBar             = document.getElementById('job-bar');
-  const jobBarNumber      = document.getElementById('job-bar-number');
-  const jobBarVenue       = document.getElementById('job-bar-venue');
-  const pageDot1          = document.getElementById('page-dot-1');
-  const pageDot2          = document.getElementById('page-dot-2');
-  const summaryGate       = document.getElementById('summary-gate');
-  const summaryJobDisplay = document.getElementById('summary-job-display');
-  const summaryVenueDisplay = document.getElementById('summary-venue-display');
-  const btnSummaryNext    = document.getElementById('btn-summary-next');
-  const btnSummaryNewJob  = document.getElementById('btn-summary-new-job');
-  const updateGateHeading = document.getElementById('update-gate-heading');
 
   let jobComplete = null;
   let scanning = false;
