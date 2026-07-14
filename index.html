@@ -716,6 +716,13 @@
       <div id="summary-details" style="text-align:left; background:rgba(255,61,129,0.1); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:13px; line-height:1.7;"></div>
       <button class="btn-primary" id="btn-summary-next" style="margin-bottom:10px;">Next scan →</button>
       <button class="btn-ghost" id="btn-summary-new-job" style="width:100%; justify-content:center;">New job</button>
+
+      <!-- TEMPORARY DEBUG PANEL — remove once TV barcode scanning is confirmed reliable -->
+      <div id="debug-panel-wrap" style="display:none; margin-top:16px; text-align:left;">
+        <button class="btn-secondary btn-small-full" id="btn-copy-debug" style="margin-bottom:8px;">Copy debug log</button>
+        <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
+      </div>
+
       <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
     </div>
   </div>
@@ -828,12 +835,6 @@
         <span style="font-size:11px; color:var(--grey); font-weight:700; flex:none;">ZOOM</span>
         <input type="range" id="zoom-slider" min="1" max="1" step="0.1" value="1" style="flex:1;">
       </div>
-    </div>
-
-    <!-- TEMPORARY DEBUG PANEL — remove once TV barcode scanning is confirmed reliable -->
-    <div id="debug-panel-wrap" style="display:none;">
-      <button class="btn-secondary btn-small-full" id="btn-copy-debug" style="margin-bottom:8px;">Copy debug log</button>
-      <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
     </div>
   </div>
 
@@ -1237,7 +1238,8 @@
       anchorPrefix: null,
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
       ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop — label/text position varies a lot more than Mac's
-      uploadCropped: true // cropped-to-barcode upload photo — smaller payload, reliable upload
+      uploadCropped: true, // cropped-to-barcode upload photo — smaller payload, reliable upload
+      uploadCrop: { widthFrac: 0.55, heightFrac: 0.22, yFrac: 0.39 } // genuinely tight — the OCR crop above is nearly full-frame, too big to fix the payload-size issue
     }
   };
 
@@ -1653,7 +1655,7 @@
   function buildUploadPhotoForTarget(target, source) {
     if (!target.uploadCropped) return captureUploadPhoto(source);
     const { w: vw, h: vh } = sourceDims(source);
-    const crop = target.ocrCrop;
+    const crop = target.uploadCrop || target.ocrCrop;
     const cropW = vw * crop.widthFrac;
     const cropH = vh * crop.heightFrac;
     const cropX = (vw - cropW) / 2;
