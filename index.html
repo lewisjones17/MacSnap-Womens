@@ -713,6 +713,7 @@
       </div>
       <h2>Submitted</h2>
       <p id="summary-subtext">Job <strong id="summary-job-display"></strong> at <strong id="summary-venue-display"></strong></p>
+      <div id="summary-details" style="text-align:left; background:rgba(255,61,129,0.1); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:13px; line-height:1.7;"></div>
       <button class="btn-primary" id="btn-summary-next" style="margin-bottom:10px;">Next scan →</button>
       <button class="btn-ghost" id="btn-summary-new-job" style="width:100%; justify-content:center;">New job</button>
       <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
@@ -724,8 +725,7 @@
     <!-- PAGE 1 — pick and do the first scan -->
     <div class="page-screen show" id="page1">
       <div class="camera-actions" id="page1-triggers">
-        <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
-        <button class="btn-primary btn-large" id="btn-scan-mac">Scan Asset ID</button>
+        <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV</button>
       </div>
       <div id="page1-camera-slot"></div>
       <div id="page1-row-slot"></div>
@@ -841,7 +841,7 @@
        moved there by JS depending on which target was scanned first. -->
   <div class="result-row" id="mac-row">
     <div class="result-row-label">
-      <span>Asset ID</span>
+      <span>Exterity</span>
       <span class="row-actions">
         <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
@@ -854,7 +854,7 @@
     <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
     <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
     <div class="manual-row" id="mac-manual-row">
-      <input type="text" id="mac-manual-input" placeholder="Type Asset ID" autocapitalize="characters" autocomplete="off">
+      <input type="text" id="mac-manual-input" placeholder="Type Exterity" autocapitalize="characters" autocomplete="off">
       <button class="btn-primary" id="mac-manual-use">Use</button>
     </div>
   </div>
@@ -1003,6 +1003,7 @@
   const pageDot1          = document.getElementById('page-dot-1');
   const pageDot2          = document.getElementById('page-dot-2');
   const summaryGate       = document.getElementById('summary-gate');
+  const summaryDetails    = document.getElementById('summary-details');
   const summaryJobDisplay = document.getElementById('summary-job-display');
   const summaryVenueDisplay = document.getElementById('summary-venue-display');
   const btnSummaryNext    = document.getElementById('btn-summary-next');
@@ -1169,7 +1170,6 @@
   const guideBox          = document.getElementById('guide-box');
   const guideText          = document.getElementById('guide-text');
   const scanState         = document.getElementById('scan-state');
-  const btnScanMac        = document.getElementById('btn-scan-mac');
   const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
   const btnCameraDone     = document.getElementById('btn-camera-done');
@@ -1201,7 +1201,7 @@
       value: null,
       photo: null,
       rowEl: document.getElementById('mac-row'),
-      label: 'Asset ID',
+      label: 'Exterity',
       valueEl: document.getElementById('mac-value'),
       metaEl: document.getElementById('mac-meta'),
       metaTextEl: document.getElementById('mac-meta-text'),
@@ -1211,17 +1211,17 @@
       manualInput: document.getElementById('mac-manual-input'),
       manualUseBtn: document.getElementById('mac-manual-use'),
       manualBtn: document.getElementById('btn-mac-manual'),
-      guideLabel: 'LINE UP ASSET ID BARCODE / QR',
+      guideLabel: 'LINE UP EXTERITY BARCODE / QR',
       whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
       anchorPrefix: null,
-      useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans an Asset ID, not raw MAC digits; the sheet script resolves the actual MAC via the ASSETS master list
-      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop, same as TV Barcode
+      useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans a code that resolves to a MAC via the ASSETS master list lookup
+      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop, same as TV
     },
     tv: {
       value: null,
       photo: null,
       rowEl: document.getElementById('tv-row'),
-      label: 'TV Barcode',
+      label: 'TV',
       valueEl: document.getElementById('tv-value'),
       metaEl: document.getElementById('tv-meta'),
       metaTextEl: document.getElementById('tv-meta-text'),
@@ -1355,24 +1355,19 @@
     btnTorch.style.display = 'none';
 
     if (currentPage === 'page1') {
-      page1Triggers.style.display = 'flex';
+      // Once a first target is locked in, closing the camera should
+      // surface Next/Skip (via showPage1Nav, called by whichever handler
+      // triggered this close) — not the original pick-a-target triggers
+      // again, or both would be visible at once and page 1 would let you
+      // scan a second thing on the same page, defeating the whole point
+      // of splitting scans across two pages.
+      if (!firstTarget) page1Triggers.style.display = 'flex';
     } else {
       page2TriggerWrap.style.display = 'flex';
     }
   }
 
-  // --- Page 1: pick and scan the first target ---
-  btnScanMac.addEventListener('click', () => {
-    debugLog('btn-scan-mac clicked');
-    checkIdleThenRun(() => {
-      debugLog('btn-scan-mac: running scan-open fn');
-      firstTarget = 'mac';
-      secondTarget = 'tv';
-      openScanUI('mac');
-      showPage1Nav();
-      scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
+  // --- Page 1: scan TV first (order is fixed — TV, then Exterity) ---
   btnScanTv.addEventListener('click', () => {
     debugLog('btn-scan-tv clicked');
     checkIdleThenRun(() => {
@@ -2135,6 +2130,44 @@
     page2TriggerWrap.style.display = 'none';
   }
 
+  // Builds a recap of what's about to be submitted — must be called
+  // BEFORE resetFormState() runs, since that wipes every field this
+  // reads from. Only includes rows that actually have content.
+  function buildSummaryDetailsHTML() {
+    const rows = [];
+
+    const location = planLocationInput.value.trim();
+    if (location) rows.push(['Location', location]);
+
+    const equipment = [];
+    document.querySelectorAll('.equip-check:checked').forEach(cb => equipment.push(cb.value));
+    const equipOther = equipOtherInput.value.trim();
+    if (equipOther) equipment.push(equipOther);
+    if (equipment.length) rows.push(['Equipment', equipment.join(', ')]);
+
+    if (isAnyTvSizeTicked() && targets.tv.value) rows.push(['TV', targets.tv.value]);
+    if (isExterityTicked() && targets.mac.value) rows.push(['Exterity', targets.mac.value]);
+
+    rows.push(['Job Complete', jobComplete || '']);
+
+    if (jobComplete === 'No') {
+      const reasons = [];
+      document.querySelectorAll('.reason-check:checked').forEach(cb => reasons.push(cb.value));
+      const otherReason = otherInput.value.trim();
+      if (otherReason) reasons.push(otherReason);
+      if (reasons.length) rows.push(['Why not', reasons.join(', ')]);
+    }
+
+    if (session && session.name) rows.push(['Engineer', session.name]);
+
+    return rows.map(([label, value]) =>
+      '<div style="display:flex; justify-content:space-between; gap:14px; padding:5px 0; border-bottom:1px solid rgba(255,61,129,0.12);">' +
+        '<span style="color:var(--grey); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.05em; flex:none; padding-top:2px;">' + label + '</span>' +
+        '<span style="text-align:right; color:var(--sand); font-weight:600;">' + value + '</span>' +
+      '</div>'
+    ).join('');
+  }
+
   function showSubmitSuccess() {
     const wasComplete = (jobComplete === 'Yes');
     lastActivityTime = Date.now();
@@ -2142,6 +2175,7 @@
 
     const jobText = session.job;
     const venueText = session.venue;
+    const detailsHTML = buildSummaryDetailsHTML();
 
     resetFormState();
 
@@ -2154,6 +2188,7 @@
     setTimeout(() => {
       summaryJobDisplay.textContent = jobText;
       summaryVenueDisplay.textContent = venueText;
+      summaryDetails.innerHTML = detailsHTML;
       hideAllGates();
       summaryGate.classList.remove('hidden');
     }, 600);
