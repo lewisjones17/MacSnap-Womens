@@ -1541,17 +1541,19 @@
   }
 
   // Automated check: whenever a barcode/QR/DataMatrix decodes successfully,
-  // immediately OCR the printed text in the same frame and compare.
+  // immediately OCR the printed text in the same frame as a bonus sanity
+  // check — but it is never allowed to override or reject the decode.
   //
-  // ZXing decodes are format-verified (checksums baked into QR/DataMatrix/
-  // Code128 etc. mean a decode can't just be random noise), so OCR here is
-  // a secondary sanity check, not the source of truth. A real printed
-  // label code on these TVs is short — roughly 3 to 25 characters. If OCR
-  // comes back wildly longer than that, it's not a genuine contradicting
-  // read — it's Tesseract hallucinating text off the barcode/DataMatrix
-  // graphic itself (dense black/white modules read as garbled letters).
-  // That kind of noise shouldn't veto a good decode; only a short,
-  // plausible OCR read that actually disagrees should.
+  // ZXing decodes are format-verified: QR/DataMatrix/Code128 etc. all bake
+  // a checksum into the encoding, so a decode genuinely cannot be random
+  // noise the way OCR output can. Real-world testing showed ZXing getting
+  // the correct value 4/4 times on a busy label while OCR, working off a
+  // much larger and less controlled crop, kept confidently reading OTHER
+  // real printed text on the label (compliance text, a second barcode,
+  // etc.) — not garbage, just the wrong text. That's not a genuine
+  // contradiction of the barcode, so it must never flip a correct decode
+  // to "Failed". OCR here can only ever upgrade a result to "confirmed"
+  // when it happens to agree — it has no power to reject.
   async function handleZxingSuccess(targetKey, zxingValue, stillFrame) {
     ocrBusy = true;
     scanState.textContent = 'Confirming with printed digits…';
@@ -1567,22 +1569,14 @@
 
     const ocrPlausible = ocrText && ocrText.length >= 3 && ocrText.length <= 25;
     const confirmed = ocrPlausible && valuesMatch(zxingValue, ocrText);
-    const genuineMismatch = ocrPlausible && !confirmed;
     debugLog('handleZxingSuccess: zxingValue=' + zxingValue + ' ocrText=' + ocrText + ' ocrPlausible=' + ocrPlausible + ' confirmed=' + confirmed);
 
+    setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
     if (confirmed) {
-      setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
       targets[targetKey].metaTextEl.textContent = 'Captured & confirmed — barcode matches printed digits';
       showToast('Captured & confirmed', true);
-    } else if (genuineMismatch) {
-      setTargetResult(targetKey, 'Failed', 'capture', uploadDataUrl);
-      targets[targetKey].metaTextEl.textContent = `Barcode read as "${zxingValue}", printed text read as "${ocrText}" — didn\u2019t match. Rescan, or submit as-is (photo saved as backup)`;
-      showToast('Could not confirm — rescan, or submit with photo as backup');
     } else {
-      // OCR was empty or too noisy to be a real reading (not a genuine
-      // contradiction) — trust the format-verified barcode decode itself.
-      setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
-      targets[targetKey].metaTextEl.textContent = 'Captured — barcode decoded, printed text unreadable to confirm. Check it\u2019s correct';
+      targets[targetKey].metaTextEl.textContent = 'Captured — check it\u2019s correct';
       showToast('Captured — check it\u2019s correct');
     }
 
