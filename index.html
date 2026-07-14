@@ -1139,15 +1139,9 @@
       guideBox.style.display = 'block';
       guideText.textContent = targets[activeTarget].guideLabel;
       scanState.style.display = 'block';
+      scanState.textContent = 'Tap Capture when lined up';
       scanning = true;
       btnCapture.style.display = 'block';
-
-      if (targets[activeTarget].useQR) {
-        scanState.textContent = 'Scanning… hold steady';
-        startContinuousScan(activeTarget);
-      } else {
-        scanState.textContent = 'Tap Capture when lined up';
-      }
 
     } catch (err) {
       if (err.name === 'NotAllowedError') showToast('Camera permission denied — check Safari settings');
@@ -1362,7 +1356,10 @@
       showToast('Captured & confirmed', true);
     } else {
       setTargetResult(targetKey, 'Failed', 'capture', uploadDataUrl);
-      targets[targetKey].metaTextEl.textContent = 'Barcode didn\u2019t match printed digits — rescan, or submit as-is (photo saved as backup)';
+      const rawNote = ocrText
+        ? `Barcode read as "${zxingValue}", printed text read as "${ocrText}" — didn\u2019t match. Rescan, or submit as-is (photo saved as backup)`
+        : `Barcode read as "${zxingValue}" but couldn\u2019t read the printed digits to confirm it. Rescan, or submit as-is (photo saved as backup)`;
+      targets[targetKey].metaTextEl.textContent = rawNote;
       showToast('Could not confirm — rescan, or submit with photo as backup');
     }
 
