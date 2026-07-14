@@ -823,9 +823,10 @@
           <path d="M9 2h6a1 1 0 0 1 1 1v3.382a2 2 0 0 1-.553 1.382L14 9.5V20a2 2 0 0 1-2 2 2 2 0 0 1-2-2V9.5L8.553 7.764A2 2 0 0 1 8 6.382V3a1 1 0 0 1 1-1z"/>
         </svg>
       </button>
-      <div id="zoom-wrap" style="display:none; flex:1; align-items:center; gap:8px;">
-        <span style="font-size:11px; color:var(--grey); font-weight:700; flex:none;">ZOOM</span>
-        <input type="range" id="zoom-slider" min="1" max="1" step="0.1" value="1" style="flex:1;">
+      <div id="zoom-wrap" style="display:none; flex:1; align-items:center; justify-content:center; gap:10px;">
+        <button class="btn-ghost" id="btn-zoom-minus" aria-label="Zoom out" style="width:44px; padding:8px; font-size:20px; font-weight:800;">−</button>
+        <span id="zoom-level-text" style="font-size:12px; color:var(--grey); font-weight:700; flex:none; min-width:38px; text-align:center;">1.0x</span>
+        <button class="btn-ghost" id="btn-zoom-plus" aria-label="Zoom in" style="width:44px; padding:8px; font-size:20px; font-weight:800;">+</button>
       </div>
     </div>
   </div>
@@ -1162,7 +1163,9 @@
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
   const zoomWrap           = document.getElementById('zoom-wrap');
-  const zoomSlider         = document.getElementById('zoom-slider');
+  const btnZoomMinus      = document.getElementById('btn-zoom-minus');
+  const btnZoomPlus       = document.getElementById('btn-zoom-plus');
+  const zoomLevelText     = document.getElementById('zoom-level-text');
   const toast              = document.getElementById('toast');
   const btnSubmit          = document.getElementById('btn-submit');
   const equipmentSection  = document.getElementById('equipment-section');
@@ -1177,6 +1180,7 @@
   let jobComplete = null;
   let scanning = false;
   let activeTrack = null;
+  let zoomMin = null, zoomMax = null, zoomStep = null, currentZoom = null;
   let torchOn = false;
   let ocrBusy = false;
   let activeTarget = null; // 'mac' | 'tv'
@@ -1202,7 +1206,8 @@
       anchorPrefix: null,
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans a code that resolves to a MAC via the ASSETS master list lookup
       ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop, same as TV
-      uploadCropped: false // full-frame upload photo — lets the physical MAC label be visible in shot too
+      uploadCropped: false, // full-frame upload photo — lets the physical MAC label be visible in shot too
+      rotateDeg: -90 // saved photo rotated 90° counter-clockwise
     },
     tv: {
       value: null,
@@ -1435,20 +1440,21 @@
         }
         // Zoom — only exposed by some browsers (notably not iOS Safari);
         // shown only when the camera actually reports zoom capability.
-        // No default is auto-applied on open — on multi-lens iPhones
-        // (e.g. 17 Pro), forcing a zoom constraint the instant the stream
-        // starts was triggering an actual physical lens swap (ultra-wide
-        // / wide / telephoto), which is jarring and not what "zoom" should
-        // do here. The slider is manual-only now, full natural range —
-        // whatever the camera naturally opens on stays put until the
-        // person actually drags it themselves.
+        // Minimum is clamped to 37% of the available range and applied
+        // immediately on open — on multi-lens iPhones the low end of this
+        // range is the .5x ultra-wide lens, which should never be reachable
+        // here. Controlled via +/- buttons in fixed steps, not a slider.
         if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
-          zoomSlider.min = caps.zoom.min;
-          zoomSlider.max = caps.zoom.max;
-          zoomSlider.step = caps.zoom.step || 0.1;
-          zoomSlider.value = track.getSettings ? (track.getSettings().zoom || caps.zoom.min) : caps.zoom.min;
+          zoomMin = caps.zoom.min + 0.37 * (caps.zoom.max - caps.zoom.min);
+          zoomMax = caps.zoom.max;
+          zoomStep = Math.max(caps.zoom.step || 0.1, (zoomMax - zoomMin) * 0.15);
+          currentZoom = zoomMin;
+          try { await track.applyConstraints({ advanced: [{ zoom: currentZoom }] }); } catch (e) {}
+          updateZoomDisplay();
           zoomWrap.style.display = 'flex';
           cameraToolActions.style.display = 'flex';
+        } else {
+          zoomMin = zoomMax = zoomStep = currentZoom = null;
         }
       }
 
@@ -1471,10 +1477,26 @@
     }
   }
 
-  zoomSlider.addEventListener('input', () => {
-    if (!activeTrack) return;
-    activeTrack.applyConstraints({ advanced: [{ zoom: parseFloat(zoomSlider.value) }] }).catch(() => {});
-  });
+  function updateZoomDisplay() {
+    if (currentZoom === null) return;
+    zoomLevelText.textContent = currentZoom.toFixed(1) + 'x';
+    btnZoomMinus.disabled = currentZoom <= zoomMin;
+    btnZoomPlus.disabled = currentZoom >= zoomMax;
+    btnZoomMinus.style.opacity = btnZoomMinus.disabled ? '0.4' : '1';
+    btnZoomPlus.style.opacity = btnZoomPlus.disabled ? '0.4' : '1';
+  }
+
+  function adjustZoom(delta) {
+    if (!activeTrack || currentZoom === null) return;
+    // Floor is a hard limit — never allowed to go lower, which is what
+    // keeps this off the .5x ultra-wide lens.
+    currentZoom = Math.min(zoomMax, Math.max(zoomMin, currentZoom + delta));
+    activeTrack.applyConstraints({ advanced: [{ zoom: currentZoom }] }).catch(() => {});
+    updateZoomDisplay();
+  }
+
+  btnZoomMinus.addEventListener('click', () => adjustZoom(-zoomStep));
+  btnZoomPlus.addEventListener('click', () => adjustZoom(zoomStep));
 
 
 
@@ -1626,13 +1648,36 @@
     return c.toDataURL('image/jpeg', 0.50);
   }
 
+  // Rotates the full frame by the given number of degrees (90/-90/180)
+  // before saving — dimensions swap for a 90°/-90° turn so the output
+  // canvas is the correct upright shape, not just a rotated image sitting
+  // inside the old landscape/portrait bounding box.
+  function rotateUploadPhoto(source, degrees) {
+    const { w: vw, h: vh } = sourceDims(source);
+    const swapDims = Math.abs(degrees % 180) === 90;
+    const outW = swapDims ? vh : vw;
+    const outH = swapDims ? vw : vh;
+    const c = document.createElement('canvas');
+    c.width = outW;
+    c.height = outH;
+    const ctx = c.getContext('2d');
+    ctx.translate(outW / 2, outH / 2);
+    ctx.rotate(degrees * Math.PI / 180);
+    ctx.drawImage(source, -vw / 2, -vh / 2, vw, vh);
+    return c.toDataURL('image/jpeg', 0.50);
+  }
+
   // Builds the reference/upload photo for a given target — full frame,
   // or cropped down to its OCR region, depending on that target's
   // uploadCropped flag. TV stays cropped (small, reliable upload).
   // Exterity stays full-frame (so a physical MAC label nearby is still
-  // visible in the photo, not just the scanned code itself).
+  // visible in the photo, not just the scanned code itself), and gets
+  // rotated per its rotateDeg setting before saving.
   function buildUploadPhotoForTarget(target, source) {
-    if (!target.uploadCropped) return captureUploadPhoto(source);
+    if (!target.uploadCropped) {
+      if (target.rotateDeg) return rotateUploadPhoto(source, target.rotateDeg);
+      return captureUploadPhoto(source);
+    }
     const { w: vw, h: vh } = sourceDims(source);
     const crop = target.uploadCrop || target.ocrCrop;
     const cropW = vw * crop.widthFrac;
