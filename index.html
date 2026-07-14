@@ -962,6 +962,13 @@
   // Run the same check immediately too, in case DOMContentLoaded already fired
   debugLog('Script start — ZXing', !!window.ZXing);
   debugLog('Script start — ZXingBrowser', !!window.ZXingBrowser);
+
+  // Catches any uncaught error anywhere in the app and surfaces it in the
+  // debug panel — covers synchronous throws that weren't individually
+  // logged, so nothing fails completely silently while debugging is on.
+  window.addEventListener('error', (e) => {
+    debugLog('UNCAUGHT ERROR', (e.message || '') + ' @ ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
+  });
   // ==== END TEMPORARY DEBUG MODE setup (instrumentation continues below) ====
 
   // ---------------------------------------------------------------
@@ -1302,6 +1309,7 @@
   }
 
   function openScanUI(key) {
+    debugLog('openScanUI called', { key: key, currentPage: currentPage, alreadyScanning: scanning });
     activeTarget = key;
     attachCameraAndRowToPage(key, currentPage);
 
@@ -1319,10 +1327,12 @@
     // stream. Do resume the live preview though, in case it's sitting
     // paused/frozen from a previous capture.
     if (scanning) {
+      debugLog('openScanUI: camera already running, resuming preview only');
       if (video.paused) video.play().catch(() => {});
       btnCameraDone.style.display = 'block';
       return;
     }
+    debugLog('openScanUI: calling startCamera()');
     startCamera();
   }
 
@@ -1347,20 +1357,28 @@
   }
 
   // --- Page 1: pick and scan the first target ---
-  btnScanMac.addEventListener('click', () => checkIdleThenRun(() => {
-    firstTarget = 'mac';
-    secondTarget = 'tv';
-    openScanUI('mac');
-    showPage1Nav();
-    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-  btnScanTv.addEventListener('click', () => checkIdleThenRun(() => {
-    firstTarget = 'tv';
-    secondTarget = 'mac';
-    openScanUI('tv');
-    showPage1Nav();
-    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
+  btnScanMac.addEventListener('click', () => {
+    debugLog('btn-scan-mac clicked');
+    checkIdleThenRun(() => {
+      debugLog('btn-scan-mac: running scan-open fn');
+      firstTarget = 'mac';
+      secondTarget = 'tv';
+      openScanUI('mac');
+      showPage1Nav();
+      scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  btnScanTv.addEventListener('click', () => {
+    debugLog('btn-scan-tv clicked');
+    checkIdleThenRun(() => {
+      debugLog('btn-scan-tv: running scan-open fn');
+      firstTarget = 'tv';
+      secondTarget = 'mac';
+      openScanUI('tv');
+      showPage1Nav();
+      scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 
   function goToPage2(autoOpenSecondScan) {
     closeScanUI();
@@ -1398,18 +1416,27 @@
   });
 
   async function startCamera() {
-    if (scanning) return;
+    if (scanning) {
+      debugLog('startCamera: already scanning, bailing out');
+      return;
+    }
+    debugLog('startCamera: requesting getUserMedia');
     try {
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
+        debugLog('startCamera: getUserMedia (ideal constraints) succeeded');
       } catch (permErr) {
+        debugLog('startCamera: ideal constraints failed, trying fallback 1', permErr && permErr.name);
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+          debugLog('startCamera: fallback 1 succeeded');
         } catch (permErr2) {
+          debugLog('startCamera: fallback 1 failed, trying fallback 2', permErr2 && permErr2.name);
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          debugLog('startCamera: fallback 2 succeeded');
         }
       }
 
@@ -1452,6 +1479,7 @@
       btnCameraDone.style.display = 'block';
 
     } catch (err) {
+      debugLog('startCamera: FAILED', (err && err.name) + ': ' + (err && err.message));
       if (err.name === 'NotAllowedError') showToast('Camera permission denied — check Safari settings');
       else if (err.name === 'NotFoundError') showToast('No camera found on this device');
       else showToast('Camera unavailable — try manual entry');
