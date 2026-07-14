@@ -1691,10 +1691,14 @@
 
   // What actually gets uploaded/saved — same crop-or-full base as the
   // display photo, but with the target's rotateDeg applied if it has one.
+  // Quality is lower here specifically (0.30 vs the display copy's 0.50)
+  // since this is the one that actually gets sent over the network —
+  // smaller file, faster/more reliable upload, especially on flaky
+  // on-site wifi/cellular.
   function buildFinalUploadPhotoForTarget(target, source) {
     let canvas = buildBaseCanvasForTarget(target, source);
     if (target.rotateDeg) canvas = rotateCanvas(canvas, target.rotateDeg);
-    return canvas.toDataURL('image/jpeg', 0.50);
+    return canvas.toDataURL('image/jpeg', 0.25);
   }
 
   function normalizeForCompare(s) {
@@ -2231,7 +2235,7 @@
     if (equipOther) equipment.push(equipOther);
     if (equipment.length) rows.push(['Equipment', equipment.join(', ')]);
 
-    if (isAnyTvSizeTicked() && targets.tv.value) rows.push(['TV', targets.tv.value]);
+    if (isAnyTvSizeTicked() && targets.tv.value) rows.push(['TV Barcode', targets.tv.value]);
     if (isExterityTicked() && targets.mac.value) rows.push(['Exterity', targets.mac.value]);
 
     rows.push(['Job Complete', jobComplete || '']);
