@@ -666,7 +666,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span>Tap a scan button below to open the camera</span>
+        <span>Tap Scan TV Barcode or Scan Exterity Mac to open the camera</span>
       </div>
       <div class="guide-box" id="guide-box" style="display:none;">
         <div class="guide-bars">
@@ -688,8 +688,8 @@
 
     <div class="camera-actions">
       <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
+      <button class="btn-primary btn-large" id="btn-scan-mac">Scan Exterity Mac</button>
       <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
-      <button class="btn-secondary btn-small-full" id="btn-done-scan" style="display:none;">Done</button>
     </div>
 
     <div class="actions" id="camera-tool-actions" style="display:none;">
@@ -698,9 +698,45 @@
           <path d="M9 2h6a1 1 0 0 1 1 1v3.382a2 2 0 0 1-.553 1.382L14 9.5V20a2 2 0 0 1-2 2 2 2 0 0 1-2-2V9.5L8.553 7.764A2 2 0 0 1 8 6.382V3a1 1 0 0 1 1-1z"/>
         </svg>
       </button>
-      <div id="zoom-wrap" style="display:none; flex:1; display:flex; align-items:center; gap:8px;">
+      <div id="zoom-wrap" style="display:none; flex:1; align-items:center; gap:8px;">
         <span style="font-size:11px; color:var(--grey); font-weight:700; flex:none;">ZOOM</span>
         <input type="range" id="zoom-slider" min="1" max="1" step="0.1" value="1" style="flex:1;">
+      </div>
+    </div>
+
+    <!-- Whichever scan is currently active always lives here, directly
+         below Capture — so the picture and captured value you just took
+         are right where you're looking, not somewhere else on the page. -->
+    <div id="scan-flow-anchor"></div>
+
+    <div class="actions" id="step-nav" style="display:none;">
+      <button class="btn-primary" id="btn-step-next"></button>
+      <button class="btn-ghost" id="btn-step-done" style="justify-content:center;">Done</button>
+    </div>
+
+    <!-- Whichever scan isn't currently active still sits here, fully
+         visible and editable — nothing is ever hidden, just demoted
+         below the one you're actively working on. -->
+    <div id="scan-flow-secondary"></div>
+
+    <!-- Exterity Mac result row -->
+    <div class="result-row" id="mac-row">
+      <div class="result-row-label">
+        <span>Exterity Mac</span>
+        <span class="row-actions">
+          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
+      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
+      <div class="manual-row" id="mac-manual-row">
+        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
+        <button class="btn-primary" id="mac-manual-use">Use</button>
       </div>
     </div>
 
@@ -722,29 +758,6 @@
       <div class="manual-row" id="tv-manual-row">
         <input type="text" id="tv-manual-input" placeholder="Type TV barcode" autocapitalize="characters" autocomplete="off">
         <button class="btn-primary" id="tv-manual-use">Use</button>
-      </div>
-    </div>
-
-    <button class="btn-primary btn-large" id="btn-scan-mac" style="margin-top:2px;">Scan Exterity Mac</button>
-
-    <!-- Exterity Mac result row -->
-    <div class="result-row" id="mac-row">
-      <div class="result-row-label">
-        <span>Exterity Mac</span>
-        <span class="row-actions">
-          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </span>
-      </div>
-      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
-      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
-      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
-      <div class="manual-row" id="mac-manual-row">
-        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
-        <button class="btn-primary" id="mac-manual-use">Use</button>
       </div>
     </div>
 
@@ -965,11 +978,15 @@
   const btnScanMac        = document.getElementById('btn-scan-mac');
   const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
-  const btnDoneScan       = document.getElementById('btn-done-scan');
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
   const zoomWrap           = document.getElementById('zoom-wrap');
   const zoomSlider         = document.getElementById('zoom-slider');
+  const scanFlowAnchor    = document.getElementById('scan-flow-anchor');
+  const scanFlowSecondary = document.getElementById('scan-flow-secondary');
+  const stepNav            = document.getElementById('step-nav');
+  const btnStepNext       = document.getElementById('btn-step-next');
+  const btnStepDone       = document.getElementById('btn-step-done');
   const toast              = document.getElementById('toast');
   const btnSubmit          = document.getElementById('btn-submit');
   const equipmentSection  = document.getElementById('equipment-section');
@@ -993,6 +1010,8 @@
     mac: {
       value: null,
       photo: null,
+      rowEl: document.getElementById('mac-row'),
+      label: 'Exterity Mac',
       valueEl: document.getElementById('mac-value'),
       metaEl: document.getElementById('mac-meta'),
       metaTextEl: document.getElementById('mac-meta-text'),
@@ -1011,6 +1030,8 @@
     tv: {
       value: null,
       photo: null,
+      rowEl: document.getElementById('tv-row'),
+      label: 'TV Barcode',
       valueEl: document.getElementById('tv-value'),
       metaEl: document.getElementById('tv-meta'),
       metaTextEl: document.getElementById('tv-meta-text'),
@@ -1064,11 +1085,43 @@
   targets.mac.valueEl.addEventListener('input', () => { targets.mac.value = targets.mac.valueEl.value.trim(); });
   targets.tv.valueEl.addEventListener('input', () => { targets.tv.value = targets.tv.valueEl.value.trim(); });
 
+  function otherTarget(key) {
+    return key === 'tv' ? 'mac' : 'tv';
+  }
+
+  // Moves the given target's result row into the "active" slot directly
+  // below Capture. Whatever was previously there (if anything, and if it
+  // isn't the same row) gets demoted to the secondary slot just below —
+  // nothing is ever hidden, just reordered so the one you're currently
+  // working on is always right where you're looking.
+  function promoteRowToAnchor(key) {
+    const incoming = targets[key].rowEl;
+    const currentlyActive = scanFlowAnchor.firstElementChild;
+    if (currentlyActive && currentlyActive !== incoming) {
+      scanFlowSecondary.insertBefore(currentlyActive, scanFlowSecondary.firstChild);
+    }
+    scanFlowAnchor.appendChild(incoming);
+  }
+
+  function updateStepNav() {
+    if (!activeTarget) { stepNav.style.display = 'none'; return; }
+    stepNav.style.display = 'flex';
+    btnStepNext.textContent = 'Next: Scan ' + targets[otherTarget(activeTarget)].label + ' \u2192';
+  }
+
   function openScanUI(key) {
     activeTarget = key;
+    promoteRowToAnchor(key);
     btnScanTv.style.display = 'none';
     btnScanMac.style.display = 'none';
-    btnDoneScan.style.display = 'block';
+    guideText.textContent = targets[key].guideLabel;
+    scanState.textContent = 'Tap Capture when lined up';
+    updateStepNav();
+
+    // If the camera's already running (switching target mid-session via
+    // Next), just update the UI above — no need to tear down and
+    // reacquire the camera stream, that would be slow and jarring.
+    if (scanning) return;
     startCamera();
   }
 
@@ -1077,7 +1130,7 @@
     btnScanTv.style.display = 'block';
     btnScanMac.style.display = 'block';
     btnCapture.style.display = 'none';
-    btnDoneScan.style.display = 'none';
+    stepNav.style.display = 'none';
     cameraToolActions.style.display = 'none';
     zoomWrap.style.display = 'none';
     placeholder.style.display = 'flex';
@@ -1092,8 +1145,12 @@
     openScanUI('mac');
     scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
-  btnScanTv.addEventListener('click', () => checkIdleThenRun(() => openScanUI('tv')));
-  btnDoneScan.addEventListener('click', closeScanUI);
+  btnScanTv.addEventListener('click', () => checkIdleThenRun(() => {
+    openScanUI('tv');
+    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  btnStepNext.addEventListener('click', () => openScanUI(otherTarget(activeTarget)));
+  btnStepDone.addEventListener('click', closeScanUI);
 
   async function startCamera() {
     if (scanning) return;
@@ -1139,9 +1196,7 @@
 
       placeholder.style.display = 'none';
       guideBox.style.display = 'block';
-      guideText.textContent = targets[activeTarget].guideLabel;
       scanState.style.display = 'block';
-      scanState.textContent = 'Tap Capture when lined up';
       scanning = true;
       btnCapture.style.display = 'block';
 
@@ -1373,7 +1428,7 @@
     }
 
     if (navigator.vibrate) navigator.vibrate(60);
-    scanState.textContent = 'Tap Capture to try again, or Done when finished';
+    scanState.textContent = 'Tap Capture to try again, or Next/Done below';
   }
 
   async function captureAndRead() {
@@ -1466,7 +1521,7 @@
         setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
         showToast('Captured — check it\u2019s correct');
         if (navigator.vibrate) navigator.vibrate(60);
-        scanState.textContent = 'Tap Capture to try again, or Done when finished';
+        scanState.textContent = 'Tap Capture to try again, or Next/Done below';
       } else {
         showToast('Could not read it clearly — try again or type it');
         scanState.textContent = 'Tap Capture when lined up';
