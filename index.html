@@ -1857,11 +1857,12 @@
       }
       pctx.putImageData(imgData, 0, 0);
 
-      const uploadCanvas = document.createElement('canvas');
-      uploadCanvas.width = cropW;
-      uploadCanvas.height = cropH;
-      uploadCanvas.getContext('2d').drawImage(captureCanvas, 0, 0, cropW, cropH);
-      const uploadDataUrl = uploadCanvas.toDataURL('image/jpeg', 0.50);
+      // Upload photo is always the FULL frame, not the cropped OCR
+      // region — so the engineer can see (and reference later) whatever
+      // else is in shot, like a nearby MAC address label, not just the
+      // barcode itself. This matches the ZXing-success path, which also
+      // uploads the full frame.
+      const uploadDataUrl = captureUploadPhoto(stillFrame);
 
       const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
 
@@ -2014,24 +2015,38 @@
 
   let submitting = false;
 
+  async function uploadPhotoOnce(dataUrl, filenamePrefix) {
+    const response = await fetch(PHOTO_UPLOAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        image: dataUrl,
+        filename: filenamePrefix + '_' + Date.now() + '.jpg'
+      })
+    });
+    const result = await response.json();
+    if (result.success) return result.link;
+    throw new Error(result.error || 'Photo upload script returned failure');
+  }
+
+  // On-site wifi/cellular is often flaky — a single transient failure was
+  // silently losing the photo link with no retry and no warning. Retries
+  // once after a short pause before giving up for real.
   async function uploadPhoto(dataUrl, filenamePrefix) {
     if (!dataUrl) return null;
     try {
-      const response = await fetch(PHOTO_UPLOAD_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          image: dataUrl,
-          filename: filenamePrefix + '_' + Date.now() + '.jpg'
-        })
-      });
-      const result = await response.json();
-      if (result.success) return result.link;
-      console.error('Photo upload failed:', result.error);
-      return null;
+      return await uploadPhotoOnce(dataUrl, filenamePrefix);
     } catch (err) {
-      console.error('Photo upload error:', err);
-      return null;
+      console.error('Photo upload failed, retrying once:', err);
+      debugLog('Photo upload failed, retrying once', err && err.message);
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      try {
+        return await uploadPhotoOnce(dataUrl, filenamePrefix);
+      } catch (err2) {
+        console.error('Photo upload retry also failed:', err2);
+        debugLog('Photo upload retry also failed', err2 && err2.message);
+        return null;
+      }
     }
   }
 
@@ -2052,6 +2067,13 @@
 
       const macPhotoLink = macApplies ? await uploadPhoto(targets.mac.photo, 'mac_scan') : null;
       const tvPhotoLink  = tvApplies  ? await uploadPhoto(targets.tv.photo, 'tv_scan')   : null;
+
+      const macPhotoFailed = macApplies && targets.mac.photo && !macPhotoLink;
+      const tvPhotoFailed  = tvApplies  && targets.tv.photo  && !tvPhotoLink;
+      if (macPhotoFailed || tvPhotoFailed) {
+        const which = [macPhotoFailed && 'Exterity', tvPhotoFailed && 'TV'].filter(Boolean).join(' and ');
+        showToast(which + ' photo failed to upload after retrying — submitting without it');
+      }
 
       btnSubmit.textContent = 'Sending…';
       const payload = buildPayload();
