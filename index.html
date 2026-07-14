@@ -714,6 +714,9 @@
       <button class="btn-ghost" id="btn-step-done" style="justify-content:center;">Done</button>
     </div>
 
+    <!-- TEMPORARY DEBUG PANEL — remove once TV barcode scanning is confirmed reliable -->
+    <div id="debug-panel" style="display:none; background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
+
     <!-- Whichever scan isn't currently active still sits here, fully
          visible and editable — nothing is ever hidden, just demoted
          below the one you're actively working on. -->
@@ -817,6 +820,39 @@
   const PHOTO_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbx5gqlr03zdNG2JNoK1BhKPcL6PDtV3jRuQq46STjQCiyhnITysED-qY1bvfdLszHwcTQ/exec";
 
   const STORAGE_KEY = "macsnap_womens_installer_session";
+
+  // ==== TEMPORARY DEBUG MODE — remove this whole block plus the
+  // #debug-panel div once TV barcode scanning is confirmed reliable ====
+  const DEBUG_MODE = true;
+  const debugPanel = document.getElementById('debug-panel');
+  if (DEBUG_MODE && debugPanel) debugPanel.style.display = 'block';
+  function debugLog(label, data) {
+    if (!DEBUG_MODE) return;
+    let line = '[' + new Date().toLocaleTimeString() + '] ' + label;
+    if (data !== undefined) {
+      try { line += ': ' + (typeof data === 'object' ? JSON.stringify(data) : String(data)); }
+      catch (e) { line += ': [unstringifiable]'; }
+    }
+    console.log(line);
+    if (debugPanel) {
+      debugPanel.textContent += line + '\n';
+      debugPanel.scrollTop = debugPanel.scrollHeight;
+    }
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    debugLog('ZXing core (window.ZXing) loaded', !!window.ZXing);
+    debugLog('ZXingBrowser (window.ZXingBrowser) loaded', !!window.ZXingBrowser);
+    if (window.ZXing) {
+      debugLog('ZXing.BarcodeFormat.DATA_MATRIX', window.ZXing.BarcodeFormat ? window.ZXing.BarcodeFormat.DATA_MATRIX : 'BarcodeFormat missing');
+    }
+    if (window.ZXingBrowser) {
+      debugLog('ZXingBrowser.BrowserMultiFormatReader exists', typeof window.ZXingBrowser.BrowserMultiFormatReader);
+    }
+  });
+  // Run the same check immediately too, in case DOMContentLoaded already fired
+  debugLog('Script start — ZXing', !!window.ZXing);
+  debugLog('Script start — ZXingBrowser', !!window.ZXingBrowser);
+  // ==== END TEMPORARY DEBUG MODE setup (instrumentation continues below) ====
 
   // ---------------------------------------------------------------
   // SETUP GATES — first-use form, then confirm-or-update each time
@@ -1226,7 +1262,10 @@
     // BrowserMultiFormatReader lives in the separate @zxing/browser package
     // (global ZXingBrowser) — BarcodeFormat/DecodeHintType are still from
     // the core @zxing/library package (global ZXing).
-    if (!window.ZXingBrowser || !window.ZXing) return null;
+    if (!window.ZXingBrowser || !window.ZXing) {
+      debugLog('getZxingReader: window.ZXingBrowser or window.ZXing missing', { ZXingBrowser: !!window.ZXingBrowser, ZXing: !!window.ZXing });
+      return null;
+    }
     const wantedFormats = [
       'QR_CODE', 'MICRO_QR_CODE', 'DATA_MATRIX',
       'CODE_128', 'CODE_39', 'CODE_93', 'CODABAR', 'ITF',
@@ -1235,10 +1274,12 @@
     const formats = wantedFormats
       .map(name => ZXing.BarcodeFormat[name])
       .filter(f => f !== undefined);
+    debugLog('getZxingReader: resolved formats', formats.length + ' of ' + wantedFormats.length + ' names resolved');
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
     zxingReader = new ZXingBrowser.BrowserMultiFormatReader(hints);
+    debugLog('getZxingReader: reader constructed OK');
     return zxingReader;
   }
 
@@ -1250,15 +1291,19 @@
   // PNG (lossless) is used for the decode input specifically because JPEG
   // compression blurs the sharp black/white bar edges a 1D barcode decoder
   // depends on — the final uploaded reference photo still uses JPEG 50%.
-  async function decodeCanvasWithZxing(canvas) {
+  async function decodeCanvasWithZxing(canvas, label) {
     let reader;
     try {
       reader = getZxingReader();
     } catch (err) {
+      debugLog('decodeCanvasWithZxing [' + label + ']: reader construction THREW', (err && err.name) + ': ' + (err && err.message));
       console.error('ZXing reader construction failed:', err);
       return null;
     }
-    if (!reader) return null;
+    if (!reader) {
+      debugLog('decodeCanvasWithZxing [' + label + ']: no reader available, skipping decode');
+      return null;
+    }
 
     const dataUrl = canvas.toDataURL('image/png');
     const img = new Image();
@@ -1270,13 +1315,17 @@
 
     try {
       await loaded;
+      debugLog('decodeCanvasWithZxing [' + label + ']: calling decodeFromImageElement, image size', img.naturalWidth + 'x' + img.naturalHeight);
       const result = await reader.decodeFromImageElement(img);
-      return result ? result.getText() : null;
+      const text = result ? result.getText() : null;
+      debugLog('decodeCanvasWithZxing [' + label + ']: SUCCESS', text);
+      return text;
     } catch (err) {
       // NotFoundException is the normal "no code in this frame" case.
       // Anything else is a real bug — log it so it's diagnosable instead
       // of silently vanishing into another guess-and-check cycle.
       const isNotFound = err && (err.name === 'NotFoundException' || /not found/i.test(err.message || ''));
+      debugLog('decodeCanvasWithZxing [' + label + ']: failed', (err && err.name) + ': ' + (err && err.message) + (isNotFound ? ' (normal not-found)' : ' (UNEXPECTED)'));
       if (!isNotFound) {
         console.error('ZXing decode error (not a simple not-found):', err);
       }
@@ -1290,7 +1339,7 @@
     captureCanvas.height = vh;
     const ctx = captureCanvas.getContext('2d');
     ctx.drawImage(video, 0, 0, vw, vh);
-    return decodeCanvasWithZxing(captureCanvas);
+    return decodeCanvasWithZxing(captureCanvas, 'full-frame');
   }
 
   // Second attempt: crop to the centre of frame and upscale 2x before
@@ -1314,7 +1363,7 @@
     cctx.imageSmoothingQuality = 'high';
     cctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropCanvas.width, cropCanvas.height);
 
-    return decodeCanvasWithZxing(cropCanvas);
+    return decodeCanvasWithZxing(cropCanvas, 'cropped-2x');
   }
 
   // Grabs a full-frame photo for upload/reference, independent of any crop.
@@ -1413,6 +1462,7 @@
     ocrBusy = false;
 
     const confirmed = ocrText && valuesMatch(zxingValue, ocrText);
+    debugLog('handleZxingSuccess: zxingValue=' + zxingValue + ' ocrText=' + ocrText + ' confirmed=' + confirmed);
 
     if (confirmed) {
       setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
@@ -1438,6 +1488,7 @@
     btnCapture.textContent = 'Reading…';
     btnCapture.disabled = true;
     scanState.textContent = 'Reading…';
+    debugLog('--- Capture tapped ---', 'target=' + activeTarget);
 
     try {
       const vw = video.videoWidth;
@@ -1449,9 +1500,11 @@
         let qrValue = await tryQR();
         if (!qrValue) qrValue = await tryQRCropped();
         if (qrValue) {
+          debugLog('captureAndRead: ZXing succeeded, routing through confirm check', qrValue);
           await handleZxingSuccess(activeTarget, qrValue);
           return;
         }
+        debugLog('captureAndRead: ZXing found nothing (both attempts), falling to OCR fallback');
       }
 
       // OCR fallback path (also the only path for the mac target)
@@ -1519,7 +1572,16 @@
 
       if (cleaned.length >= (t.anchorPrefix ? 10 : 4)) {
         setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
-        showToast('Captured — check it\u2019s correct');
+        if (activeTarget === 'tv') {
+          // TV target OCR-fallback only runs when ZXing found no barcode
+          // at all in this frame — flag clearly that this is an unverified
+          // text read, not a decoded/confirmed barcode, so it's never
+          // mistaken for the higher-confidence ZXing+OCR-confirmed result.
+          t.metaTextEl.textContent = 'Read as text (no barcode detected) — not verified, check carefully';
+          showToast('Read as text — no barcode found, please check');
+        } else {
+          showToast('Captured — check it\u2019s correct');
+        }
         if (navigator.vibrate) navigator.vibrate(60);
         scanState.textContent = 'Tap Capture to try again, or Next/Done below';
       } else {
