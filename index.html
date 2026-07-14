@@ -1215,7 +1215,8 @@
       whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
       anchorPrefix: null,
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans a code that resolves to a MAC via the ASSETS master list lookup
-      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop, same as TV
+      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop, same as TV
+      uploadCropped: false // full-frame upload photo — lets the physical MAC label be visible in shot too
     },
     tv: {
       value: null,
@@ -1235,7 +1236,8 @@
       whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
       anchorPrefix: null,
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
-      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop — label/text position varies a lot more than Mac's
+      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop — label/text position varies a lot more than Mac's
+      uploadCropped: true // cropped-to-barcode upload photo — smaller payload, reliable upload
     }
   };
 
@@ -1643,6 +1645,26 @@
     return c.toDataURL('image/jpeg', 0.50);
   }
 
+  // Builds the reference/upload photo for a given target — full frame,
+  // or cropped down to its OCR region, depending on that target's
+  // uploadCropped flag. TV stays cropped (small, reliable upload).
+  // Exterity stays full-frame (so a physical MAC label nearby is still
+  // visible in the photo, not just the scanned code itself).
+  function buildUploadPhotoForTarget(target, source) {
+    if (!target.uploadCropped) return captureUploadPhoto(source);
+    const { w: vw, h: vh } = sourceDims(source);
+    const crop = target.ocrCrop;
+    const cropW = vw * crop.widthFrac;
+    const cropH = vh * crop.heightFrac;
+    const cropX = (vw - cropW) / 2;
+    const cropY = vh * crop.yFrac;
+    const c = document.createElement('canvas');
+    c.width = cropW;
+    c.height = cropH;
+    c.getContext('2d').drawImage(source, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    return c.toDataURL('image/jpeg', 0.50);
+  }
+
   function normalizeForCompare(s) {
     return (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   }
@@ -1760,7 +1782,7 @@
     ocrBusy = true;
     scanState.textContent = 'Confirming with printed digits…';
 
-    const uploadDataUrl = captureUploadPhoto(stillFrame);
+    const uploadDataUrl = buildUploadPhotoForTarget(targets[targetKey], stillFrame);
     let ocrText = '';
     try {
       ocrText = await ocrReadDigits(targetKey, stillFrame);
@@ -1857,12 +1879,10 @@
       }
       pctx.putImageData(imgData, 0, 0);
 
-      // Upload photo is always the FULL frame, not the cropped OCR
-      // region — so the engineer can see (and reference later) whatever
-      // else is in shot, like a nearby MAC address label, not just the
-      // barcode itself. This matches the ZXing-success path, which also
-      // uploads the full frame.
-      const uploadDataUrl = captureUploadPhoto(stillFrame);
+      // Upload photo respects each target's uploadCropped setting — TV
+      // stays cropped (small, reliable upload); Exterity stays full-frame
+      // so a nearby physical MAC label is still visible in shot.
+      const uploadDataUrl = buildUploadPhotoForTarget(t, stillFrame);
 
       const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
 
@@ -2016,6 +2036,8 @@
   let submitting = false;
 
   async function uploadPhotoOnce(dataUrl, filenamePrefix) {
+    const approxKB = Math.round((dataUrl.length * 0.75) / 1024);
+    debugLog('uploadPhotoOnce: sending', { filenamePrefix: filenamePrefix, approxKB: approxKB });
     const response = await fetch(PHOTO_UPLOAD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2024,7 +2046,9 @@
         filename: filenamePrefix + '_' + Date.now() + '.jpg'
       })
     });
+    debugLog('uploadPhotoOnce: fetch responded', { status: response.status, ok: response.ok });
     const result = await response.json();
+    debugLog('uploadPhotoOnce: parsed result', result);
     if (result.success) return result.link;
     throw new Error(result.error || 'Photo upload script returned failure');
   }
