@@ -118,6 +118,44 @@
   }
   .name-gate.hidden { display: none; }
 
+  .job-bar {
+    background: rgba(151,19,73,0.22);
+    border-bottom: 1px solid rgba(255,61,129,0.3);
+    padding: 10px 20px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .job-bar.show { display: flex; }
+  .job-bar-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sand);
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .job-bar-text span {
+    color: var(--rose-light);
+  }
+  .page-dot-row {
+    display: flex;
+    gap: 6px;
+    flex: none;
+  }
+  .page-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(247,237,232,0.25);
+  }
+  .page-dot.active { background: var(--rose-light); }
+
+  .page-screen { display: none; }
+  .page-screen.show { display: flex; flex-direction: column; gap: 14px; }
+
   .name-gate-card {
     width: 100%;
     max-width: 360px;
@@ -604,6 +642,14 @@
     </div>
   </header>
 
+  <div class="job-bar" id="job-bar">
+    <div class="job-bar-text">Job <span id="job-bar-number"></span> · <span id="job-bar-venue"></span></div>
+    <div class="page-dot-row" id="page-dot-row">
+      <div class="page-dot active" id="page-dot-1"></div>
+      <div class="page-dot" id="page-dot-2"></div>
+    </div>
+  </div>
+
   <div id="name-gate" class="name-gate">
     <div class="name-gate-card">
       <div class="name-gate-brand">MacSnap! Womens</div>
@@ -648,7 +694,7 @@
           <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h2>New job / structure</h2>
+      <h2 id="update-gate-heading">New job / structure</h2>
       <p>This updates what gets sent with every scan.</p>
       <input id="job-input-2" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
       <input id="venue-input-2" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
@@ -657,8 +703,89 @@
     </div>
   </div>
 
+  <div id="summary-gate" class="name-gate hidden">
+    <div class="name-gate-card">
+      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Submitted</h2>
+      <p id="summary-subtext">Job <strong id="summary-job-display"></strong> at <strong id="summary-venue-display"></strong></p>
+      <button class="btn-primary" id="btn-summary-next" style="margin-bottom:10px;">Next scan →</button>
+      <button class="btn-ghost" id="btn-summary-new-job" style="width:100%; justify-content:center;">New job</button>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+    </div>
+  </div>
+
   <main>
 
+    <!-- PAGE 1 — pick and do the first scan -->
+    <div class="page-screen show" id="page1">
+      <div class="camera-actions" id="page1-triggers">
+        <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
+        <button class="btn-primary btn-large" id="btn-scan-mac">Scan Asset ID</button>
+      </div>
+      <div id="page1-camera-slot"></div>
+      <div id="page1-row-slot"></div>
+      <div class="actions" id="page1-nav" style="display:none;">
+        <button class="btn-primary" id="btn-page1-next"></button>
+        <button class="btn-ghost" id="btn-page1-skip" style="justify-content:center;">Skip →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 2 — second scan (optional), then the rest of the form -->
+    <div class="page-screen" id="page2">
+      <div class="camera-actions" id="page2-trigger-wrap" style="display:none;">
+        <button class="btn-primary btn-large" id="btn-scan-second"></button>
+      </div>
+      <div id="page2-camera-slot"></div>
+      <div id="page2-row-slot"></div>
+
+      <div id="equipment-section" class="form-section">
+        <div class="section-label">Location (Number on plan or describe!) — required</div>
+        <input id="plan-location-input" type="text" placeholder="e.g. 12, or describe the spot" autocomplete="off" style="margin-bottom:14px;">
+        <div class="section-label">Equipment installed</div>
+        <label class="check-row"><input type="checkbox" value="43 inch Tv" class="equip-check tv-size-check"> 43 inch Tv</label>
+        <label class="check-row"><input type="checkbox" value="55 inch Tv" class="equip-check tv-size-check"> 55 inch Tv</label>
+        <label class="check-row"><input type="checkbox" value="65 inch Tv" class="equip-check tv-size-check"> 65 inch Tv</label>
+        <label class="check-row"><input type="checkbox" value="75 inch Tv" class="equip-check tv-size-check"> 75 inch Tv</label>
+        <label class="check-row"><input type="checkbox" value="85 inch Tv" class="equip-check tv-size-check"> 85 inch Tv</label>
+        <label class="check-row"><input type="checkbox" value="Stand" class="equip-check"> Stand</label>
+        <label class="check-row"><input type="checkbox" value="Exterity" class="equip-check exterity-check" checked> Exterity</label>
+        <input id="equip-other-input" type="text" placeholder="Other equipment (optional)" autocomplete="off" style="margin-top:10px;">
+      </div>
+
+      <div id="complete-section" class="form-section">
+        <div class="section-label">Job Complete?</div>
+        <div class="actions">
+          <button class="btn-primary" id="btn-complete-yes">Yes</button>
+          <button class="btn-ghost" id="btn-complete-no" style="justify-content:center;">No</button>
+        </div>
+      </div>
+
+      <div id="reasons-section" class="form-section" style="display:none;">
+        <div class="section-label">Why Not?</div>
+        <label class="check-row"><input type="checkbox" value="No Poe" class="reason-check"> No Poe</label>
+        <label class="check-row"><input type="checkbox" value="No Cat5" class="reason-check"> No Cat5</label>
+        <label class="check-row"><input type="checkbox" value="No Power installed" class="reason-check"> No Power installed</label>
+        <label class="check-row"><input type="checkbox" value="Power NOT On" class="reason-check"> Power NOT On</label>
+        <label class="check-row"><input type="checkbox" value="No Furniture" class="reason-check"> No Furniture</label>
+        <input id="other-input" type="text" placeholder="Other (optional)" autocomplete="off" style="margin-top:10px;">
+      </div>
+
+      <button class="btn-primary btn-large" id="btn-submit" disabled>Send to install form →</button>
+
+      <p class="hint">Tick equipment as it goes in. If a TV size or Exterity is ticked, scan it above — unticking either one before you send means that scan (and its photo) won't be included, so scroll down and untick anything that doesn't apply.</p>
+    </div>
+
+  </main>
+
+  <!-- Shared camera block — one <video> element, moved between page1-camera-slot
+       and page2-camera-slot rather than duplicated, so the live stream carries
+       over seamlessly when moving from the first scan's page to the second's. -->
+  <div id="camera-block">
     <div id="scan-region">
       <video id="video" playsinline muted></video>
       <canvas id="capture-canvas" style="display:none;"></canvas>
@@ -666,7 +793,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span>Tap Scan TV Barcode or Scan Asset ID to open the camera</span>
+        <span>Tap Scan above to open the camera</span>
       </div>
       <div class="guide-box" id="guide-box" style="display:none;">
         <div class="guide-bars">
@@ -687,9 +814,8 @@
     </div>
 
     <div class="camera-actions">
-      <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
-      <button class="btn-primary btn-large" id="btn-scan-mac">Scan Asset ID</button>
       <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
+      <button class="btn-ghost" id="btn-camera-done" style="display:none; width:100%; justify-content:center;">Done scanning this one</button>
     </div>
 
     <div class="actions" id="camera-tool-actions" style="display:none;">
@@ -704,106 +830,54 @@
       </div>
     </div>
 
-    <!-- Whichever scan is currently active always lives here, directly
-         below Capture — so the picture and captured value you just took
-         are right where you're looking, not somewhere else on the page. -->
-    <div id="scan-flow-anchor"></div>
-
-    <div class="actions" id="step-nav" style="display:none;">
-      <button class="btn-primary" id="btn-step-next"></button>
-      <button class="btn-ghost" id="btn-step-done" style="justify-content:center;">Done</button>
-    </div>
-
     <!-- TEMPORARY DEBUG PANEL — remove once TV barcode scanning is confirmed reliable -->
     <div id="debug-panel-wrap" style="display:none;">
       <button class="btn-secondary btn-small-full" id="btn-copy-debug" style="margin-bottom:8px;">Copy debug log</button>
       <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
     </div>
+  </div>
 
-    <!-- Whichever scan isn't currently active still sits here, fully
-         visible and editable — nothing is ever hidden, just demoted
-         below the one you're actively working on. -->
-    <div id="scan-flow-secondary"></div>
-
-    <!-- Exterity Mac result row -->
-    <div class="result-row" id="mac-row">
-      <div class="result-row-label">
-        <span>Asset ID</span>
-        <span class="row-actions">
-          <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </span>
-      </div>
-      <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
-      <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
-      <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
-      <div class="manual-row" id="mac-manual-row">
-        <input type="text" id="mac-manual-input" placeholder="Type Asset ID" autocapitalize="characters" autocomplete="off">
-        <button class="btn-primary" id="mac-manual-use">Use</button>
-      </div>
+  <!-- Result rows — one lives in page1-row-slot, the other in page2-row-slot,
+       moved there by JS depending on which target was scanned first. -->
+  <div class="result-row" id="mac-row">
+    <div class="result-row-label">
+      <span>Asset ID</span>
+      <span class="row-actions">
+        <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </span>
     </div>
-
-    <!-- TV Barcode result row -->
-    <div class="result-row" id="tv-row">
-      <div class="result-row-label">
-        <span>TV Barcode</span>
-        <span class="row-actions">
-          <button class="row-icon-btn" id="btn-tv-manual" aria-label="Enter manually">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </span>
-      </div>
-      <input class="result-row-value" id="tv-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
-      <div class="result-row-meta" id="tv-meta" style="display:none;"><span class="dot"></span><span id="tv-meta-text"></span></div>
-      <div class="result-row-photo" id="tv-photo-wrap"><img id="tv-photo-img"></div>
-      <div class="manual-row" id="tv-manual-row">
-        <input type="text" id="tv-manual-input" placeholder="Type TV barcode" autocapitalize="characters" autocomplete="off">
-        <button class="btn-primary" id="tv-manual-use">Use</button>
-      </div>
+    <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+    <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
+    <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
+    <div class="manual-row" id="mac-manual-row">
+      <input type="text" id="mac-manual-input" placeholder="Type Asset ID" autocapitalize="characters" autocomplete="off">
+      <button class="btn-primary" id="mac-manual-use">Use</button>
     </div>
+  </div>
 
-    <div id="equipment-section" class="form-section">
-      <div class="section-label">Location (Number on plan or describe!) — required</div>
-      <input id="plan-location-input" type="text" placeholder="e.g. 12, or describe the spot" autocomplete="off" style="margin-bottom:14px;">
-      <div class="section-label">Equipment installed</div>
-      <label class="check-row"><input type="checkbox" value="43 inch Tv" class="equip-check tv-size-check"> 43 inch Tv</label>
-      <label class="check-row"><input type="checkbox" value="55 inch Tv" class="equip-check tv-size-check"> 55 inch Tv</label>
-      <label class="check-row"><input type="checkbox" value="65 inch Tv" class="equip-check tv-size-check"> 65 inch Tv</label>
-      <label class="check-row"><input type="checkbox" value="75 inch Tv" class="equip-check tv-size-check"> 75 inch Tv</label>
-      <label class="check-row"><input type="checkbox" value="85 inch Tv" class="equip-check tv-size-check"> 85 inch Tv</label>
-      <label class="check-row"><input type="checkbox" value="Stand" class="equip-check"> Stand</label>
-      <label class="check-row"><input type="checkbox" value="Exterity" class="equip-check exterity-check" checked> Exterity</label>
-      <input id="equip-other-input" type="text" placeholder="Other equipment (optional)" autocomplete="off" style="margin-top:10px;">
+  <div class="result-row" id="tv-row">
+    <div class="result-row-label">
+      <span>TV Barcode</span>
+      <span class="row-actions">
+        <button class="row-icon-btn" id="btn-tv-manual" aria-label="Enter manually">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 17.25V20h2.75L20 6.75 17.25 4 4 17.25z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </span>
     </div>
-
-    <div id="complete-section" class="form-section">
-      <div class="section-label">Job Complete?</div>
-      <div class="actions">
-        <button class="btn-primary" id="btn-complete-yes">Yes</button>
-        <button class="btn-ghost" id="btn-complete-no" style="justify-content:center;">No</button>
-      </div>
+    <input class="result-row-value" id="tv-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
+    <div class="result-row-meta" id="tv-meta" style="display:none;"><span class="dot"></span><span id="tv-meta-text"></span></div>
+    <div class="result-row-photo" id="tv-photo-wrap"><img id="tv-photo-img"></div>
+    <div class="manual-row" id="tv-manual-row">
+      <input type="text" id="tv-manual-input" placeholder="Type TV barcode" autocapitalize="characters" autocomplete="off">
+      <button class="btn-primary" id="tv-manual-use">Use</button>
     </div>
-
-    <div id="reasons-section" class="form-section" style="display:none;">
-      <div class="section-label">Why Not?</div>
-      <label class="check-row"><input type="checkbox" value="No Poe" class="reason-check"> No Poe</label>
-      <label class="check-row"><input type="checkbox" value="No Cat5" class="reason-check"> No Cat5</label>
-      <label class="check-row"><input type="checkbox" value="No Power installed" class="reason-check"> No Power installed</label>
-      <label class="check-row"><input type="checkbox" value="Power NOT On" class="reason-check"> Power NOT On</label>
-      <label class="check-row"><input type="checkbox" value="No Furniture" class="reason-check"> No Furniture</label>
-      <input id="other-input" type="text" placeholder="Other (optional)" autocomplete="off" style="margin-top:10px;">
-    </div>
-
-    <button class="btn-primary btn-large" id="btn-submit" disabled>Send to install form →</button>
-
-    <p class="hint">Tick equipment as it goes in. If a TV size or Exterity is ticked, scan it above — unticking either one before you send means that scan (and its photo) won't be included, so scroll down and untick anything that doesn't apply.</p>
-
-  </main>
+  </div>
 
   <footer>MacSnap! Womens · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</footer>
 
@@ -929,6 +1003,7 @@
     nameGate.classList.add('hidden');
     confirmGate.classList.add('hidden');
     updateGate.classList.add('hidden');
+    summaryGate.classList.add('hidden');
   }
 
   function showInstallerTag() {
@@ -936,12 +1011,7 @@
     installerTag.style.display = 'inline';
     installerTag.innerHTML = 'Hi, ' + session.name + '<button id="btn-new-job">new job</button><button id="btn-change-name">reset</button>';
     document.getElementById('btn-new-job').addEventListener('click', () => {
-      resetFormState();
-      hideAllGates();
-      updateGate.classList.remove('hidden');
-      jobInput2.value = session.job || '';
-      venueInput2.value = session.venue || '';
-      jobInput2.focus();
+      openUpdateGate(true);
     });
     document.getElementById('btn-change-name').addEventListener('click', () => {
       hideAllGates();
@@ -960,6 +1030,21 @@
     confirmVenueDisplay.textContent = session.venue;
   }
 
+  // Opens the job/structure entry screen. prefill=true carries over the
+  // current job/venue for editing (header "new job" link, or "No, new
+  // job/structure" from the confirm screen); prefill=false clears both
+  // fields and focuses Job Number for a genuinely fresh start (the
+  // summary popup's "New job" button).
+  function openUpdateGate(prefill) {
+    resetFormState();
+    goToPage('page1');
+    hideAllGates();
+    updateGate.classList.remove('hidden');
+    jobInput2.value = prefill ? (session.job || '') : '';
+    venueInput2.value = prefill ? (session.venue || '') : '';
+    jobInput2.focus();
+  }
+
   btnSaveName.addEventListener('click', () => {
     const name = nameInput.value.trim();
     const job = jobInput.value.trim();
@@ -971,6 +1056,7 @@
     setSession(session);
     hideAllGates();
     showInstallerTag();
+    updateJobBar();
   });
 
   [nameInput, jobInput, venueInput].forEach((el, i, arr) => {
@@ -987,11 +1073,7 @@
   });
 
   btnConfirmNo.addEventListener('click', () => {
-    hideAllGates();
-    updateGate.classList.remove('hidden');
-    jobInput2.value = session.job || '';
-    venueInput2.value = session.venue || '';
-    jobInput2.focus();
+    openUpdateGate(true);
   });
 
   btnSaveUpdate.addEventListener('click', () => {
@@ -1003,6 +1085,7 @@
     session.venue = venue;
     setSession(session);
     hideAllGates();
+    updateJobBar();
   });
 
   [jobInput2, venueInput2].forEach((el, i, arr) => {
@@ -1016,6 +1099,7 @@
   if (session && session.name && session.job && session.venue) {
     showInstallerTag();
     goToConfirmScreen();
+    updateJobBar();
   } else {
     nameGate.classList.remove('hidden');
     nameInput.focus();
@@ -1038,7 +1122,7 @@
   });
 
   // ---------------------------------------------------------------
-  // CAMERA / SCAN ENGINE — shared video element, two targets
+  // CAMERA / SCAN ENGINE — shared video element, two targets, two pages
   // ---------------------------------------------------------------
   const video           = document.getElementById('video');
   const captureCanvas   = document.getElementById('capture-canvas');
@@ -1050,15 +1134,11 @@
   const btnScanMac        = document.getElementById('btn-scan-mac');
   const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
+  const btnCameraDone     = document.getElementById('btn-camera-done');
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
   const zoomWrap           = document.getElementById('zoom-wrap');
   const zoomSlider         = document.getElementById('zoom-slider');
-  const scanFlowAnchor    = document.getElementById('scan-flow-anchor');
-  const scanFlowSecondary = document.getElementById('scan-flow-secondary');
-  const stepNav            = document.getElementById('step-nav');
-  const btnStepNext       = document.getElementById('btn-step-next');
-  const btnStepDone       = document.getElementById('btn-step-done');
   const toast              = document.getElementById('toast');
   const btnSubmit          = document.getElementById('btn-submit');
   const equipmentSection  = document.getElementById('equipment-section');
@@ -1069,6 +1149,32 @@
   const otherInput        = document.getElementById('other-input');
   const planLocationInput = document.getElementById('plan-location-input');
   const equipOtherInput   = document.getElementById('equip-other-input');
+
+  // Page/screen elements
+  const cameraBlock       = document.getElementById('camera-block');
+  const page1             = document.getElementById('page1');
+  const page2             = document.getElementById('page2');
+  const page1Triggers     = document.getElementById('page1-triggers');
+  const page1CameraSlot   = document.getElementById('page1-camera-slot');
+  const page1RowSlot      = document.getElementById('page1-row-slot');
+  const page1Nav          = document.getElementById('page1-nav');
+  const btnPage1Next      = document.getElementById('btn-page1-next');
+  const btnPage1Skip      = document.getElementById('btn-page1-skip');
+  const page2TriggerWrap  = document.getElementById('page2-trigger-wrap');
+  const btnScanSecond     = document.getElementById('btn-scan-second');
+  const page2CameraSlot   = document.getElementById('page2-camera-slot');
+  const page2RowSlot      = document.getElementById('page2-row-slot');
+  const jobBar             = document.getElementById('job-bar');
+  const jobBarNumber      = document.getElementById('job-bar-number');
+  const jobBarVenue       = document.getElementById('job-bar-venue');
+  const pageDot1          = document.getElementById('page-dot-1');
+  const pageDot2          = document.getElementById('page-dot-2');
+  const summaryGate       = document.getElementById('summary-gate');
+  const summaryJobDisplay = document.getElementById('summary-job-display');
+  const summaryVenueDisplay = document.getElementById('summary-venue-display');
+  const btnSummaryNext    = document.getElementById('btn-summary-next');
+  const btnSummaryNewJob  = document.getElementById('btn-summary-new-job');
+  const updateGateHeading = document.getElementById('update-gate-heading');
 
   let jobComplete = null;
   let scanning = false;
@@ -1161,42 +1267,60 @@
     return key === 'tv' ? 'mac' : 'tv';
   }
 
-  // Moves the given target's result row into the "active" slot directly
-  // below Capture. Whatever was previously there (if anything, and if it
-  // isn't the same row) gets demoted to the secondary slot just below —
-  // nothing is ever hidden, just reordered so the one you're currently
-  // working on is always right where you're looking.
-  function promoteRowToAnchor(key) {
-    const incoming = targets[key].rowEl;
-    const currentlyActive = scanFlowAnchor.firstElementChild;
-    if (currentlyActive && currentlyActive !== incoming) {
-      scanFlowSecondary.insertBefore(currentlyActive, scanFlowSecondary.firstChild);
+  let currentPage = 'page1';
+  let firstTarget = null;  // whichever target the engineer picks first
+  let secondTarget = null; // the other one, reached via page 2
+
+  function updateJobBar() {
+    if (session && session.job && session.venue) {
+      jobBarNumber.textContent = session.job;
+      jobBarVenue.textContent = session.venue;
+      jobBar.classList.add('show');
+    } else {
+      jobBar.classList.remove('show');
     }
-    scanFlowAnchor.appendChild(incoming);
   }
 
-  function updateStepNav() {
-    if (!activeTarget) { stepNav.style.display = 'none'; return; }
-    stepNav.style.display = 'flex';
-    btnStepNext.textContent = 'Next: Scan ' + targets[otherTarget(activeTarget)].label + ' \u2192';
+  function goToPage(pageName) {
+    currentPage = pageName;
+    page1.classList.toggle('show', pageName === 'page1');
+    page2.classList.toggle('show', pageName === 'page2');
+    pageDot1.classList.toggle('active', pageName === 'page1');
+    pageDot2.classList.toggle('active', pageName === 'page2');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Moves the shared camera block and the given target's result row into
+  // whichever page is currently active — there's only ever one scan
+  // happening per page, so no promote/demote juggling needed, just move
+  // both pieces to that page's designated slots.
+  function attachCameraAndRowToPage(key, pageName) {
+    const cameraSlot = pageName === 'page1' ? page1CameraSlot : page2CameraSlot;
+    const rowSlot = pageName === 'page1' ? page1RowSlot : page2RowSlot;
+    cameraSlot.appendChild(cameraBlock);
+    rowSlot.appendChild(targets[key].rowEl);
   }
 
   function openScanUI(key) {
     activeTarget = key;
-    promoteRowToAnchor(key);
-    btnScanTv.style.display = 'none';
-    btnScanMac.style.display = 'none';
+    attachCameraAndRowToPage(key, currentPage);
+
+    if (currentPage === 'page1') {
+      page1Triggers.style.display = 'none';
+    } else {
+      page2TriggerWrap.style.display = 'none';
+    }
+
     guideText.textContent = targets[key].guideLabel;
     scanState.textContent = 'Tap Capture when lined up';
-    updateStepNav();
 
-    // If the camera's already running (switching target mid-session via
-    // Next), just update the UI above — no need to tear down and
-    // reacquire the camera stream, that would be slow and jarring. Do
-    // resume the live preview though, in case it's sitting paused/frozen
-    // from a previous capture on the other target.
+    // If the camera's already running (e.g. resuming after a capture),
+    // just update the UI above — no need to tear down and reacquire the
+    // stream. Do resume the live preview though, in case it's sitting
+    // paused/frozen from a previous capture.
     if (scanning) {
       if (video.paused) video.play().catch(() => {});
+      btnCameraDone.style.display = 'block';
       return;
     }
     startCamera();
@@ -1204,10 +1328,8 @@
 
   function closeScanUI() {
     activeTarget = null;
-    btnScanTv.style.display = 'block';
-    btnScanMac.style.display = 'block';
     btnCapture.style.display = 'none';
-    stepNav.style.display = 'none';
+    btnCameraDone.style.display = 'none';
     cameraToolActions.style.display = 'none';
     zoomWrap.style.display = 'none';
     placeholder.style.display = 'flex';
@@ -1216,18 +1338,64 @@
     scanning = false;
     if (activeTrack) { activeTrack.stop(); activeTrack = null; }
     btnTorch.style.display = 'none';
+
+    if (currentPage === 'page1') {
+      page1Triggers.style.display = 'flex';
+    } else {
+      page2TriggerWrap.style.display = 'flex';
+    }
   }
 
+  // --- Page 1: pick and scan the first target ---
   btnScanMac.addEventListener('click', () => checkIdleThenRun(() => {
+    firstTarget = 'mac';
+    secondTarget = 'tv';
     openScanUI('mac');
+    showPage1Nav();
     scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
   btnScanTv.addEventListener('click', () => checkIdleThenRun(() => {
+    firstTarget = 'tv';
+    secondTarget = 'mac';
     openScanUI('tv');
+    showPage1Nav();
     scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
-  btnStepNext.addEventListener('click', () => openScanUI(otherTarget(activeTarget)));
-  btnStepDone.addEventListener('click', closeScanUI);
+
+  function goToPage2(autoOpenSecondScan) {
+    closeScanUI();
+    page1Nav.style.display = 'none';
+    goToPage('page2');
+    btnScanSecond.textContent = 'Scan ' + targets[secondTarget].label;
+    if (autoOpenSecondScan) {
+      openScanUI(secondTarget);
+    } else {
+      page2TriggerWrap.style.display = 'flex';
+    }
+  }
+
+  btnPage1Next.addEventListener('click', () => goToPage2(true));
+  btnPage1Skip.addEventListener('click', () => goToPage2(false));
+
+  // --- Page 2: scan the second (remaining) target ---
+  btnScanSecond.addEventListener('click', () => checkIdleThenRun(() => {
+    openScanUI(secondTarget);
+    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+
+  // Shows Page 1's Next/Skip nav once the first scan has produced a
+  // result (or been attempted) — both options move on to page 2, the
+  // only difference is whether the second scan's camera auto-opens.
+  function showPage1Nav() {
+    if (currentPage !== 'page1' || !firstTarget) return;
+    page1Nav.style.display = 'flex';
+    btnPage1Next.textContent = 'Next: Scan ' + targets[secondTarget].label + ' \u2192';
+  }
+
+  btnCameraDone.addEventListener('click', () => {
+    closeScanUI();
+    if (currentPage === 'page1') showPage1Nav();
+  });
 
   async function startCamera() {
     if (scanning) return;
@@ -1281,6 +1449,7 @@
       scanState.style.display = 'block';
       scanning = true;
       btnCapture.style.display = 'block';
+      btnCameraDone.style.display = 'block';
 
     } catch (err) {
       if (err.name === 'NotAllowedError') showToast('Camera permission denied — check Safari settings');
@@ -1586,7 +1755,7 @@
     }
 
     if (navigator.vibrate) navigator.vibrate(60);
-    scanState.textContent = 'Tap Capture to try again, or Next/Done below';
+    scanState.textContent = 'Tap Capture to try again, or continue below';
   }
 
   async function captureAndRead() {
@@ -1706,7 +1875,7 @@
           showToast('Captured — check it\u2019s correct');
         }
         if (navigator.vibrate) navigator.vibrate(60);
-        scanState.textContent = 'Tap Capture to try again, or Next/Done below';
+        scanState.textContent = 'Tap Capture to try again, or continue below';
       } else {
         showToast('Could not read it clearly — try again or type it');
         scanState.textContent = 'Tap Capture when lined up';
@@ -1906,6 +2075,8 @@
     resetTarget('tv');
 
     jobComplete = null;
+    firstTarget = null;
+    secondTarget = null;
 
     document.querySelectorAll('.reason-check').forEach(cb => cb.checked = false);
     document.querySelectorAll('.tv-size-check').forEach(cb => cb.checked = false);
@@ -1926,6 +2097,9 @@
     btnSubmit.textContent = 'Send to install form →';
 
     closeScanUI();
+    page1Nav.style.display = 'none';
+    page1Triggers.style.display = 'flex';
+    page2TriggerWrap.style.display = 'none';
   }
 
   function showSubmitSuccess() {
@@ -1933,13 +2107,35 @@
     lastActivityTime = Date.now();
     submitting = false;
 
+    const jobText = session.job;
+    const venueText = session.venue;
+
     resetFormState();
 
-    showToast('Submitted — ready for the next one', true);
     if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
     if (wasComplete) fireConfetti();
     else fireSoClose();
+
+    // Brief pause so the confetti/so-close moment is actually visible
+    // before the summary popup covers the screen.
+    setTimeout(() => {
+      summaryJobDisplay.textContent = jobText;
+      summaryVenueDisplay.textContent = venueText;
+      hideAllGates();
+      summaryGate.classList.remove('hidden');
+    }, 600);
   }
+
+  btnSummaryNext.addEventListener('click', () => {
+    hideAllGates();
+    goToPage('page1');
+  });
+
+  btnSummaryNewJob.addEventListener('click', () => {
+    openUpdateGate(false);
+  });
+
+
 
   const SO_CLOSE_PHRASES = [
     'SO CLOSE!!!!',
