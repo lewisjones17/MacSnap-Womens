@@ -715,7 +715,10 @@
     </div>
 
     <!-- TEMPORARY DEBUG PANEL — remove once TV barcode scanning is confirmed reliable -->
-    <div id="debug-panel" style="display:none; background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
+    <div id="debug-panel-wrap" style="display:none;">
+      <button class="btn-secondary btn-small-full" id="btn-copy-debug" style="margin-bottom:8px;">Copy debug log</button>
+      <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
+    </div>
 
     <!-- Whichever scan isn't currently active still sits here, fully
          visible and editable — nothing is ever hidden, just demoted
@@ -825,7 +828,40 @@
   // #debug-panel div once TV barcode scanning is confirmed reliable ====
   const DEBUG_MODE = true;
   const debugPanel = document.getElementById('debug-panel');
-  if (DEBUG_MODE && debugPanel) debugPanel.style.display = 'block';
+  const debugPanelWrap = document.getElementById('debug-panel-wrap');
+  const btnCopyDebug = document.getElementById('btn-copy-debug');
+  if (DEBUG_MODE && debugPanelWrap) debugPanelWrap.style.display = 'block';
+  if (btnCopyDebug) {
+    btnCopyDebug.addEventListener('click', () => {
+      const text = debugPanel ? debugPanel.textContent : '';
+      if (!text) { showToast('Nothing to copy yet'); return; }
+
+      function fallbackCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('Debug log copied', true);
+        } catch (e) {
+          showToast('Could not copy — select and copy manually');
+        }
+        document.body.removeChild(ta);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => showToast('Debug log copied', true))
+          .catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+    });
+  }
   function debugLog(label, data) {
     if (!DEBUG_MODE) return;
     let line = '[' + new Date().toLocaleTimeString() + '] ' + label;
