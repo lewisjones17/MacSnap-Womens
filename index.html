@@ -1472,8 +1472,16 @@
         .map(w => w.text.toUpperCase().replace(whitelistRe, ''))
         .filter(w => w.length > 0);
       if (confident.length) {
-        result = confident.join('');
-        debugLog('extractConfidentText: used word-confidence filter', { raw: (data.text||'').slice(0,60), confident: result });
+        // Don't concatenate every confident word — a label often has
+        // short brand-text fragments ("PMY") alongside the actual code
+        // ("PMYUK4758"), and both can be individually high-confidence.
+        // The real code is reliably the longest single word on the
+        // label, so pick that rather than gluing fragments together.
+        // On a length tie, prefer the last one — matches the observed
+        // pattern that text nearer the label's trailing edge reads more
+        // reliably than text mixed in near the barcode graphic.
+        result = confident.reduce((best, w) => (w.length >= best.length ? w : best), confident[0]);
+        debugLog('extractConfidentText: used word-confidence filter', { raw: (data.text||'').slice(0,60), allConfidentWords: confident, chosen: result });
         return result;
       }
     }
