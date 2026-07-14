@@ -729,24 +729,17 @@
 
   <main>
 
-    <!-- PAGE 1 — pick and do the first scan -->
+    <!-- PAGE 1 — TV camera auto-opens on arrival -->
     <div class="page-screen show" id="page1">
-      <div class="camera-actions" id="page1-triggers">
-        <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV</button>
-      </div>
       <div id="page1-camera-slot"></div>
       <div id="page1-row-slot"></div>
       <div class="actions" id="page1-nav" style="display:none;">
-        <button class="btn-primary" id="btn-page1-next"></button>
-        <button class="btn-ghost" id="btn-page1-skip" style="justify-content:center;">Skip →</button>
+        <button class="btn-primary btn-large" id="btn-page1-next"></button>
       </div>
     </div>
 
-    <!-- PAGE 2 — second scan (optional), then the rest of the form -->
+    <!-- PAGE 2 — Exterity camera auto-opens on arrival, then the rest of the form -->
     <div class="page-screen" id="page2">
-      <div class="camera-actions" id="page2-trigger-wrap" style="display:none;">
-        <button class="btn-primary btn-large" id="btn-scan-second"></button>
-      </div>
       <div id="page2-camera-slot"></div>
       <div id="page2-row-slot"></div>
 
@@ -987,14 +980,10 @@
   const cameraBlock       = document.getElementById('camera-block');
   const page1             = document.getElementById('page1');
   const page2             = document.getElementById('page2');
-  const page1Triggers     = document.getElementById('page1-triggers');
   const page1CameraSlot   = document.getElementById('page1-camera-slot');
   const page1RowSlot      = document.getElementById('page1-row-slot');
   const page1Nav          = document.getElementById('page1-nav');
   const btnPage1Next      = document.getElementById('btn-page1-next');
-  const btnPage1Skip      = document.getElementById('btn-page1-skip');
-  const page2TriggerWrap  = document.getElementById('page2-trigger-wrap');
-  const btnScanSecond     = document.getElementById('btn-scan-second');
   const page2CameraSlot   = document.getElementById('page2-camera-slot');
   const page2RowSlot      = document.getElementById('page2-row-slot');
   const jobBar             = document.getElementById('job-bar');
@@ -1096,6 +1085,7 @@
     hideAllGates();
     showInstallerTag();
     updateJobBar();
+    autoStartFirstScan();
   });
 
   [nameInput, jobInput, venueInput].forEach((el, i, arr) => {
@@ -1109,6 +1099,13 @@
   btnConfirmYes.addEventListener('click', () => {
     hideAllGates();
     lastActivityTime = Date.now();
+    // Only auto-start a fresh TV scan if this was the "just opened the
+    // app" confirm screen — if pendingAction is set, this confirm was
+    // triggered by an idle timeout mid-scan (e.g. on page 2), and the
+    // other confirm-yes listener below resumes that instead. Resetting
+    // to page 1/TV here would wrongly throw away an in-progress Exterity
+    // scan.
+    if (!pendingAction) autoStartFirstScan();
   });
 
   btnConfirmNo.addEventListener('click', () => {
@@ -1125,6 +1122,7 @@
     setSession(session);
     hideAllGates();
     updateJobBar();
+    autoStartFirstScan();
   });
 
   [jobInput2, venueInput2].forEach((el, i, arr) => {
@@ -1144,16 +1142,6 @@
     nameInput.focus();
   }
 
-  // Re-confirm identity if the phone's been idle a while and someone taps a scan button
-  function checkIdleThenRun(fn) {
-    const idleFor = Date.now() - lastActivityTime;
-    if (idleFor >= IDLE_THRESHOLD_MS && session && session.name && session.job && session.venue) {
-      pendingAction = fn;
-      goToConfirmScreen();
-      return;
-    }
-    fn();
-  }
   let pendingAction = null;
   const originalConfirmYesHandler = btnConfirmYes.onclick;
   btnConfirmYes.addEventListener('click', () => {
@@ -1170,7 +1158,6 @@
   const guideBox          = document.getElementById('guide-box');
   const guideText          = document.getElementById('guide-text');
   const scanState         = document.getElementById('scan-state');
-  const btnScanTv         = document.getElementById('btn-scan-tv');
   const btnCapture        = document.getElementById('btn-capture');
   const cameraToolActions = document.getElementById('camera-tool-actions');
   const btnTorch          = document.getElementById('btn-torch');
@@ -1295,13 +1282,33 @@
     }
   }
 
+  // Belt-and-braces scroll-to-top: some mobile browsers ignore
+  // window.scrollTo if it runs before the browser has actually painted a
+  // layout change (like toggling which page is visible), so this sets
+  // scrollTop directly on every element that could plausibly be "the"
+  // scrolling container, and does it after a couple of animation frames
+  // so it runs post-paint rather than racing the layout update.
+  function forceScrollTop() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+  function forceScrollTopSoon() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(forceScrollTop);
+    });
+    setTimeout(forceScrollTop, 150);
+    setTimeout(forceScrollTop, 400);
+    setTimeout(forceScrollTop, 800);
+  }
+
   function goToPage(pageName) {
     currentPage = pageName;
     page1.classList.toggle('show', pageName === 'page1');
     page2.classList.toggle('show', pageName === 'page2');
     pageDot1.classList.toggle('active', pageName === 'page1');
     pageDot2.classList.toggle('active', pageName === 'page2');
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    forceScrollTopSoon();
   }
 
   // Moves the shared camera block and the given target's result row into
@@ -1318,18 +1325,24 @@
   }
 
   function openScanUI(key) {
+    // Re-confirm identity if the phone's been idle a while before opening
+    // a camera — used to be wrapped around each "Scan X" tap, but now
+    // that the camera opens automatically (no tap), this is the natural
+    // single checkpoint that covers every path that opens one.
+    const idleFor = Date.now() - lastActivityTime;
+    if (idleFor >= IDLE_THRESHOLD_MS && session && session.name && session.job && session.venue) {
+      pendingAction = () => openScanUI(key);
+      goToConfirmScreen();
+      return;
+    }
+
     debugLog('openScanUI called', { key: key, currentPage: currentPage, alreadyScanning: scanning });
     activeTarget = key;
     attachCameraAndRowToPage(key, currentPage);
 
-    if (currentPage === 'page1') {
-      page1Triggers.style.display = 'none';
-    } else {
-      page2TriggerWrap.style.display = 'none';
-    }
-
     guideText.textContent = targets[key].guideLabel;
     scanState.textContent = 'Tap Capture when lined up';
+    btnCapture.textContent = 'Capture ' + targets[key].label;
 
     // If the camera's already running (e.g. resuming after a capture),
     // just update the UI above — no need to tear down and reacquire the
@@ -1355,61 +1368,29 @@
     scanning = false;
     if (activeTrack) { activeTrack.stop(); activeTrack = null; }
     btnTorch.style.display = 'none';
-
-    if (currentPage === 'page1') {
-      // Once a first target is locked in, closing the camera should
-      // surface Next/Skip (via showPage1Nav, called by whichever handler
-      // triggered this close) — not the original pick-a-target triggers
-      // again, or both would be visible at once and page 1 would let you
-      // scan a second thing on the same page, defeating the whole point
-      // of splitting scans across two pages.
-      if (!firstTarget) page1Triggers.style.display = 'flex';
-    } else {
-      page2TriggerWrap.style.display = 'flex';
-    }
   }
 
-  // --- Page 1: scan TV first (order is fixed — TV, then Exterity) ---
-  btnScanTv.addEventListener('click', () => {
-    debugLog('btn-scan-tv clicked');
-    checkIdleThenRun(() => {
-      debugLog('btn-scan-tv: running scan-open fn');
-      firstTarget = 'tv';
-      secondTarget = 'mac';
-      openScanUI('tv');
-      showPage1Nav();
-      scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
+  // --- Page 1: TV camera auto-opens, no trigger tap needed. Order is
+  // fixed — TV first, then Exterity. ---
+  function autoStartFirstScan() {
+    firstTarget = 'tv';
+    secondTarget = 'mac';
+    goToPage('page1');
+    openScanUI('tv');
+    showPage1Nav();
+  }
 
-  function goToPage2(autoOpenSecondScan) {
+  function goToPage2() {
     closeScanUI();
     page1Nav.style.display = 'none';
     goToPage('page2');
-    btnScanSecond.textContent = 'Scan ' + targets[secondTarget].label;
-    if (autoOpenSecondScan) {
-      openScanUI(secondTarget);
-    } else {
-      page2TriggerWrap.style.display = 'flex';
-    }
-    // Re-apply after the camera stream settles — opening it async can
-    // shift page layout/height and undo the scroll goToPage() just did.
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'auto' }), 150);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'auto' }), 500);
+    openScanUI(secondTarget);
   }
 
-  btnPage1Next.addEventListener('click', () => goToPage2(true));
-  btnPage1Skip.addEventListener('click', () => goToPage2(false));
+  btnPage1Next.addEventListener('click', () => goToPage2());
 
-  // --- Page 2: scan the second (remaining) target ---
-  btnScanSecond.addEventListener('click', () => checkIdleThenRun(() => {
-    openScanUI(secondTarget);
-    scanRegion.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-
-  // Shows Page 1's Next/Skip nav once the first scan has produced a
-  // result (or been attempted) — both options move on to page 2, the
-  // only difference is whether the second scan's camera auto-opens.
+  // Shows Page 1's Next nav once the TV camera is open — moves on to
+  // page 2 (Exterity) whenever tapped, whether or not a capture was made.
   function showPage1Nav() {
     if (currentPage !== 'page1' || !firstTarget) return;
     page1Nav.style.display = 'flex';
@@ -1936,7 +1917,7 @@
       scanState.textContent = 'Tap Capture when lined up';
     } finally {
       ocrBusy = false;
-      btnCapture.textContent = 'Capture';
+      btnCapture.textContent = 'Capture ' + t.label;
       btnCapture.disabled = false;
     }
   }
@@ -2177,8 +2158,6 @@
 
     closeScanUI();
     page1Nav.style.display = 'none';
-    page1Triggers.style.display = 'flex';
-    page2TriggerWrap.style.display = 'none';
   }
 
   // Builds a recap of what's about to be submitted — must be called
@@ -2247,7 +2226,7 @@
 
   btnSummaryNext.addEventListener('click', () => {
     hideAllGates();
-    goToPage('page1');
+    autoStartFirstScan();
   });
 
   btnSummaryNewJob.addEventListener('click', () => {
