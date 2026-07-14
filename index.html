@@ -666,7 +666,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
           <path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span>Tap Scan TV Barcode or Scan Exterity Mac to open the camera</span>
+        <span>Tap Scan TV Barcode or Scan Asset ID to open the camera</span>
       </div>
       <div class="guide-box" id="guide-box" style="display:none;">
         <div class="guide-bars">
@@ -688,7 +688,7 @@
 
     <div class="camera-actions">
       <button class="btn-primary btn-large" id="btn-scan-tv">Scan TV Barcode</button>
-      <button class="btn-primary btn-large" id="btn-scan-mac">Scan Exterity Mac</button>
+      <button class="btn-primary btn-large" id="btn-scan-mac">Scan Asset ID</button>
       <button class="btn-primary btn-large" id="btn-capture" style="display:none;">Capture</button>
     </div>
 
@@ -728,7 +728,7 @@
     <!-- Exterity Mac result row -->
     <div class="result-row" id="mac-row">
       <div class="result-row-label">
-        <span>Exterity Mac</span>
+        <span>Asset ID</span>
         <span class="row-actions">
           <button class="row-icon-btn" id="btn-mac-manual" aria-label="Enter manually">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
@@ -741,7 +741,7 @@
       <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
       <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
       <div class="manual-row" id="mac-manual-row">
-        <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
+        <input type="text" id="mac-manual-input" placeholder="Type Asset ID" autocapitalize="characters" autocomplete="off">
         <button class="btn-primary" id="mac-manual-use">Use</button>
       </div>
     </div>
@@ -818,7 +818,7 @@
 (function () {
   // ==== TODO before deploying ====
   // Replace with the Web App URL from your MacSnap! Womens sheet-writer Apps Script deployment.
-  const SHEET_URL     = "https://script.google.com/macros/s/AKfycbwiQORguEueCMBVKR_qiW1F29oMGtkx--7Dk5GegeRo3c0d9oXKBNzLlINOFaT5ja8nQA/exec";
+  const SHEET_URL     = "https://script.google.com/macros/s/AKfycbynEPpVdRcmStLHLg1cw-voaUId6gT4rCAJc14AAg8Q1vWUtYqqUvvh8XxH5DYu4txlHA/exec";
   // Replace with the Web App URL from your MacSnap! Womens photo-upload Apps Script deployment.
   const PHOTO_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbx5gqlr03zdNG2JNoK1BhKPcL6PDtV3jRuQq46STjQCiyhnITysED-qY1bvfdLszHwcTQ/exec";
 
@@ -1083,7 +1083,7 @@
       value: null,
       photo: null,
       rowEl: document.getElementById('mac-row'),
-      label: 'Exterity Mac',
+      label: 'Asset ID',
       valueEl: document.getElementById('mac-value'),
       metaEl: document.getElementById('mac-meta'),
       metaTextEl: document.getElementById('mac-meta-text'),
@@ -1093,11 +1093,11 @@
       manualInput: document.getElementById('mac-manual-input'),
       manualUseBtn: document.getElementById('mac-manual-use'),
       manualBtn: document.getElementById('btn-mac-manual'),
-      guideLabel: 'LINE UP MAC DIGITS (NOT SERIAL NO.)',
-      whitelist: '0123456789ABCDEFabcdef',
-      anchorPrefix: '00181C',
-      useQR: false,
-      ocrCrop: { widthFrac: 0.86, heightFrac: 0.22, yFrac: 0.50 } // narrow strip, tuned to Mac label position
+      guideLabel: 'LINE UP ASSET ID BARCODE / QR',
+      whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
+      anchorPrefix: null,
+      useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans an Asset ID, not raw MAC digits; the sheet script resolves the actual MAC via the ASSETS master list
+      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 } // generous crop, same as TV Barcode
     },
     tv: {
       value: null,
@@ -1258,11 +1258,16 @@
         }
         // Zoom — only exposed by some browsers (notably not iOS Safari);
         // shown only when the camera actually reports zoom capability.
+        // Defaults to 20% of the way along the available range, applied
+        // as a real constraint (not just shown on the slider) so labels
+        // fill more of the frame right from the start.
         if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
           zoomSlider.min = caps.zoom.min;
           zoomSlider.max = caps.zoom.max;
           zoomSlider.step = caps.zoom.step || 0.1;
-          zoomSlider.value = track.getSettings ? (track.getSettings().zoom || caps.zoom.min) : caps.zoom.min;
+          const defaultZoom = caps.zoom.min + 0.2 * (caps.zoom.max - caps.zoom.min);
+          zoomSlider.value = defaultZoom;
+          try { await track.applyConstraints({ advanced: [{ zoom: defaultZoom }] }); } catch (e) {}
           zoomWrap.style.display = 'flex';
           cameraToolActions.style.display = 'flex';
         }
@@ -1667,14 +1672,12 @@
         tessedit_char_whitelist: t.whitelist,
       });
 
-      // TV labels often have a barcode/DataMatrix graphic sitting right in
-      // the OCR crop alongside the real text, which Tesseract happily
-      // "reads" as garbled extra characters if we just take the raw blob.
-      // Word-level confidence filtering cuts that out. Mac's crop is a
-      // tight, tuned strip with no graphic in it and this already works
-      // reliably, so leave its extraction exactly as it was — no reason
-      // to risk it.
-      const cleaned = activeTarget === 'tv'
+      // Labels being scanned via the barcode/QR pipeline (TV Barcode, and
+      // now Asset ID) often have a barcode/DataMatrix graphic sitting
+      // right in the OCR crop alongside the real text, which Tesseract
+      // happily "reads" as garbled extra characters if we just take the
+      // raw blob. Word-level confidence filtering cuts that out.
+      const cleaned = t.useQR
         ? extractConfidentText(data, t.whitelist)
         : (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
 
@@ -1692,11 +1695,11 @@
 
       if (cleaned.length >= (t.anchorPrefix ? 10 : 4)) {
         setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
-        if (activeTarget === 'tv') {
-          // TV target OCR-fallback only runs when ZXing found no barcode
-          // at all in this frame — flag clearly that this is an unverified
-          // text read, not a decoded/confirmed barcode, so it's never
-          // mistaken for the higher-confidence ZXing+OCR-confirmed result.
+        if (t.useQR) {
+          // OCR-fallback only runs when ZXing found no barcode at all in
+          // this frame — flag clearly that this is an unverified text
+          // read, not a decoded/confirmed barcode, so it's never mistaken
+          // for the higher-confidence ZXing-decoded result.
           t.metaTextEl.textContent = 'Read as text (no barcode detected) — not verified, check carefully';
           showToast('Read as text — no barcode found, please check');
         } else {
