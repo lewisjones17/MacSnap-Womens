@@ -1229,7 +1229,8 @@
       useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback
       ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop — label/text position varies a lot more than Mac's
       uploadCropped: true, // cropped-to-barcode upload photo — smaller payload, reliable upload
-      uploadCrop: { widthFrac: 0.55, heightFrac: 0.22, yFrac: 0.39 } // genuinely tight — the OCR crop above is nearly full-frame, too big to fix the payload-size issue
+      uploadCrop: { widthFrac: 0.55, heightFrac: 0.22, yFrac: 0.39 }, // genuinely tight — the OCR crop above is nearly full-frame, too big to fix the payload-size issue
+      rotateDeg: -90 // saved photo rotated 90° counter-clockwise, same as Exterity
     }
   };
 
@@ -1440,12 +1441,12 @@
         }
         // Zoom — only exposed by some browsers (notably not iOS Safari);
         // shown only when the camera actually reports zoom capability.
-        // Minimum is clamped to 37% of the available range and applied
-        // immediately on open — on multi-lens iPhones the low end of this
-        // range is the .5x ultra-wide lens, which should never be reachable
-        // here. Controlled via +/- buttons in fixed steps, not a slider.
+        // Minimum is a fixed 2.5x, applied immediately on open — on
+        // multi-lens iPhones the low end of the reported range is the
+        // .5x ultra-wide lens, which should never be reachable here.
+        // Controlled via +/- buttons in fixed steps, not a slider.
         if (caps.zoom && caps.zoom.min !== undefined && caps.zoom.max !== undefined && caps.zoom.max > caps.zoom.min) {
-          zoomMin = caps.zoom.min + 0.37 * (caps.zoom.max - caps.zoom.min);
+          zoomMin = Math.min(2.5, caps.zoom.max); // clamp in case this camera's max is under 2.5
           zoomMax = caps.zoom.max;
           zoomStep = Math.max(caps.zoom.step || 0.1, (zoomMax - zoomMin) * 0.15);
           currentZoom = zoomMin;
@@ -1638,47 +1639,18 @@
     return decodeCanvasWithZxing(cropCanvas, 'cropped-2x');
   }
 
-  // Grabs a full-frame photo for upload/reference, independent of any crop.
-  function captureUploadPhoto(source) {
+  // Crops or takes the full frame per the target's uploadCropped setting
+  // — the shared base both the in-app preview and the final upload photo
+  // are built from, before any rotation is applied.
+  function buildBaseCanvasForTarget(target, source) {
     const { w: vw, h: vh } = sourceDims(source);
-    const c = document.createElement('canvas');
-    c.width = vw;
-    c.height = vh;
-    c.getContext('2d').drawImage(source, 0, 0, vw, vh);
-    return c.toDataURL('image/jpeg', 0.50);
-  }
-
-  // Rotates the full frame by the given number of degrees (90/-90/180)
-  // before saving — dimensions swap for a 90°/-90° turn so the output
-  // canvas is the correct upright shape, not just a rotated image sitting
-  // inside the old landscape/portrait bounding box.
-  function rotateUploadPhoto(source, degrees) {
-    const { w: vw, h: vh } = sourceDims(source);
-    const swapDims = Math.abs(degrees % 180) === 90;
-    const outW = swapDims ? vh : vw;
-    const outH = swapDims ? vw : vh;
-    const c = document.createElement('canvas');
-    c.width = outW;
-    c.height = outH;
-    const ctx = c.getContext('2d');
-    ctx.translate(outW / 2, outH / 2);
-    ctx.rotate(degrees * Math.PI / 180);
-    ctx.drawImage(source, -vw / 2, -vh / 2, vw, vh);
-    return c.toDataURL('image/jpeg', 0.50);
-  }
-
-  // Builds the reference/upload photo for a given target — full frame,
-  // or cropped down to its OCR region, depending on that target's
-  // uploadCropped flag. TV stays cropped (small, reliable upload).
-  // Exterity stays full-frame (so a physical MAC label nearby is still
-  // visible in the photo, not just the scanned code itself), and gets
-  // rotated per its rotateDeg setting before saving.
-  function buildUploadPhotoForTarget(target, source) {
     if (!target.uploadCropped) {
-      if (target.rotateDeg) return rotateUploadPhoto(source, target.rotateDeg);
-      return captureUploadPhoto(source);
+      const c = document.createElement('canvas');
+      c.width = vw;
+      c.height = vh;
+      c.getContext('2d').drawImage(source, 0, 0, vw, vh);
+      return c;
     }
-    const { w: vw, h: vh } = sourceDims(source);
     const crop = target.uploadCrop || target.ocrCrop;
     const cropW = vw * crop.widthFrac;
     const cropH = vh * crop.heightFrac;
@@ -1688,7 +1660,41 @@
     c.width = cropW;
     c.height = cropH;
     c.getContext('2d').drawImage(source, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-    return c.toDataURL('image/jpeg', 0.50);
+    return c;
+  }
+
+  // Rotates a canvas by the given number of degrees (90/-90/180) —
+  // dimensions swap for a 90°/-90° turn so the output is the correct
+  // upright shape, not a rotated image sitting inside the old bounding box.
+  function rotateCanvas(canvas, degrees) {
+    const vw = canvas.width, vh = canvas.height;
+    const swapDims = Math.abs(degrees % 180) === 90;
+    const outW = swapDims ? vh : vw;
+    const outH = swapDims ? vw : vh;
+    const c = document.createElement('canvas');
+    c.width = outW;
+    c.height = outH;
+    const ctx = c.getContext('2d');
+    ctx.translate(outW / 2, outH / 2);
+    ctx.rotate(degrees * Math.PI / 180);
+    ctx.drawImage(canvas, -vw / 2, -vh / 2, vw, vh);
+    return c;
+  }
+
+  // What's shown in the app (result row preview) — always upright,
+  // never rotated, so the engineer can actually verify the photo matches
+  // what they scanned. Rotation (if any) only ever applies to the
+  // separate copy that actually gets uploaded — see below.
+  function buildDisplayPhotoForTarget(target, source) {
+    return buildBaseCanvasForTarget(target, source).toDataURL('image/jpeg', 0.50);
+  }
+
+  // What actually gets uploaded/saved — same crop-or-full base as the
+  // display photo, but with the target's rotateDeg applied if it has one.
+  function buildFinalUploadPhotoForTarget(target, source) {
+    let canvas = buildBaseCanvasForTarget(target, source);
+    if (target.rotateDeg) canvas = rotateCanvas(canvas, target.rotateDeg);
+    return canvas.toDataURL('image/jpeg', 0.50);
   }
 
   function normalizeForCompare(s) {
@@ -1808,7 +1814,8 @@
     ocrBusy = true;
     scanState.textContent = 'Confirming with printed digits…';
 
-    const uploadDataUrl = buildUploadPhotoForTarget(targets[targetKey], stillFrame);
+    const displayPhoto = buildDisplayPhotoForTarget(targets[targetKey], stillFrame);
+    const finalUploadPhoto = buildFinalUploadPhotoForTarget(targets[targetKey], stillFrame);
     let ocrText = '';
     try {
       ocrText = await ocrReadDigits(targetKey, stillFrame);
@@ -1821,7 +1828,8 @@
     const confirmed = ocrPlausible && valuesMatch(zxingValue, ocrText);
     debugLog('handleZxingSuccess: zxingValue=' + zxingValue + ' ocrText=' + ocrText + ' ocrPlausible=' + ocrPlausible + ' confirmed=' + confirmed);
 
-    setTargetResult(targetKey, zxingValue, 'capture', uploadDataUrl);
+    setTargetResult(targetKey, zxingValue, 'capture', displayPhoto);
+    targets[targetKey].uploadPhoto = finalUploadPhoto;
     if (confirmed) {
       targets[targetKey].metaTextEl.textContent = 'Captured & confirmed — barcode matches printed digits';
       showToast('Captured & confirmed', true);
@@ -1905,10 +1913,11 @@
       }
       pctx.putImageData(imgData, 0, 0);
 
-      // Upload photo respects each target's uploadCropped setting — TV
-      // stays cropped (small, reliable upload); Exterity stays full-frame
-      // so a nearby physical MAC label is still visible in shot.
-      const uploadDataUrl = buildUploadPhotoForTarget(t, stillFrame);
+      // Display photo (shown in-app, never rotated) and the separate
+      // final upload photo (rotated if the target has rotateDeg set) —
+      // built from the same crop-or-full base, respecting uploadCropped.
+      const displayPhoto = buildDisplayPhotoForTarget(t, stillFrame);
+      const finalUploadPhoto = buildFinalUploadPhotoForTarget(t, stillFrame);
 
       const dataUrl = procCanvas.toDataURL('image/jpeg', 0.65);
 
@@ -1938,7 +1947,8 @@
       }
 
       if (cleaned.length >= (t.anchorPrefix ? 10 : 4)) {
-        setTargetResult(activeTarget, finalValue, 'capture', uploadDataUrl);
+        setTargetResult(activeTarget, finalValue, 'capture', displayPhoto);
+        targets[activeTarget].uploadPhoto = finalUploadPhoto;
         if (t.useQR) {
           // OCR-fallback only runs when ZXing found no barcode at all in
           // this frame — flag clearly that this is an unverified text
@@ -2120,8 +2130,8 @@
       // controls whether the scanned VALUE gets included in the row (via
       // buildPayload below), but a real photo shouldn't get silently
       // dropped just because a checkbox was missed.
-      const macPhotoLink = await uploadPhoto(targets.mac.photo, 'mac_scan');
-      const tvPhotoLink  = await uploadPhoto(targets.tv.photo, 'tv_scan');
+      const macPhotoLink = await uploadPhoto(targets.mac.uploadPhoto || targets.mac.photo, 'mac_scan');
+      const tvPhotoLink  = await uploadPhoto(targets.tv.uploadPhoto  || targets.tv.photo,  'tv_scan');
 
       const macPhotoFailed = targets.mac.photo && !macPhotoLink;
       const tvPhotoFailed  = targets.tv.photo  && !tvPhotoLink;
@@ -2163,6 +2173,7 @@
     const t = targets[key];
     t.value = null;
     t.photo = null;
+    t.uploadPhoto = null;
     t.valueEl.value = '';
     t.metaEl.style.display = 'none';
     t.photoWrap.classList.remove('show');
