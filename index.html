@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MacSnap! Womens — Install Scanner</title>
+<title>MacSnap! — Install Scanner</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MacSnap!">
+<meta name="theme-color" content="#971349">
 <style>
   :root {
     --ink:        #1a0f14;
@@ -629,11 +635,14 @@
     <div class="brand">
       <div class="brand-mark">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 5h2v14H5V5zm4 0h1v14H9V5zm3 0h2v14h-2V5zm4 0h1v14h-1V5zm3 0h2v14h-2V5z" fill="#F7EDE8"/>
+          <path d="M6 21h5" stroke="#F7EDE8" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M8 21V3" stroke="#F7EDE8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 3.5l7 3.25L8 10V3.5z" fill="#F7EDE8"/>
+          <circle cx="17.5" cy="17.5" r="2.1" fill="#F7EDE8"/>
         </svg>
       </div>
       <div class="brand-text">
-        MacSnap! Womens
+        MacSnap!
         <span>Install Scanner</span>
       </div>
     </div>
@@ -652,11 +661,13 @@
 
   <div id="name-gate" class="name-gate">
     <div class="name-gate-card">
-      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-brand">MacSnap!</div>
       <div class="name-gate-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" stroke-linecap="round"/>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 21h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M8 21V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 3.5l7 3.25L8 10V3.5z" fill="currentColor"/>
+          <circle cx="17.5" cy="17.5" r="2.1" fill="currentColor"/>
         </svg>
       </div>
       <h2>Quick setup</h2>
@@ -665,33 +676,38 @@
       <input id="job-input" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
       <input id="venue-input" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
       <button class="btn-primary" id="btn-save-name">Save & continue</button>
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</div>
     </div>
   </div>
 
   <div id="confirm-gate" class="name-gate hidden">
     <div class="name-gate-card">
-      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-brand">MacSnap!</div>
       <div class="name-gate-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 21h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M8 21V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 3.5l7 3.25L8 10V3.5z" fill="currentColor"/>
+          <circle cx="17.5" cy="17.5" r="2.1" fill="currentColor"/>
         </svg>
       </div>
       <h2 id="confirm-heading">Still here?</h2>
       <p id="confirm-subtext">Job <strong id="confirm-job-display"></strong> at <strong id="confirm-venue-display"></strong></p>
       <button class="btn-primary" id="btn-confirm-yes" style="margin-bottom:10px;">Yes, continue →</button>
       <button class="btn-ghost" id="btn-confirm-no" style="width:100%; justify-content:center;">No, new job/structure</button>
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</div>
     </div>
   </div>
 
   <div id="update-gate" class="name-gate hidden">
     <div class="name-gate-card">
-      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-brand">MacSnap!</div>
       <div class="name-gate-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 21h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M8 21V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 3.5l7 3.25L8 10V3.5z" fill="currentColor"/>
+          <circle cx="17.5" cy="17.5" r="2.1" fill="currentColor"/>
         </svg>
       </div>
       <h2 id="update-gate-heading">New job / structure</h2>
@@ -699,20 +715,28 @@
       <input id="job-input-2" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
       <input id="venue-input-2" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
       <button class="btn-primary" id="btn-save-update">Save & continue</button>
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+      <div id="recent-jobs-wrap" style="display:none; text-align:left; margin-top:18px;">
+        <div style="font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--grey); margin-bottom:8px;">Recent jobs</div>
+        <div id="recent-jobs-list"></div>
+      </div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</div>
     </div>
   </div>
 
   <div id="summary-gate" class="name-gate hidden">
     <div class="name-gate-card">
-      <div class="name-gate-brand">MacSnap! Womens</div>
+      <div class="name-gate-brand">MacSnap!</div>
       <div class="name-gate-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 21h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M8 21V3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 3.5l7 3.25L8 10V3.5z" fill="currentColor"/>
+          <circle cx="17.5" cy="17.5" r="2.1" fill="currentColor"/>
         </svg>
       </div>
       <h2>Submitted</h2>
       <p id="summary-subtext">Job <strong id="summary-job-display"></strong> at <strong id="summary-venue-display"></strong></p>
+      <p id="summary-tally" style="font-size:12px; color:var(--rose-light); font-weight:700; margin-top:-12px; margin-bottom:16px;"></p>
       <div id="summary-details" style="text-align:left; background:rgba(255,61,129,0.1); border-radius:12px; padding:14px 16px; margin-bottom:20px; font-size:13px; line-height:1.7;"></div>
       <button class="btn-primary" id="btn-summary-next" style="margin-bottom:10px;">Next scan →</button>
       <button class="btn-ghost" id="btn-summary-new-job" style="width:100%; justify-content:center;">New job</button>
@@ -723,7 +747,7 @@
         <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
       </div>
 
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</div>
     </div>
   </div>
 
@@ -873,7 +897,7 @@
     </div>
   </div>
 
-  <footer>MacSnap! Womens · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! Womens is prohibited.</footer>
+  <footer>MacSnap! · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</footer>
 
 </div>
 
@@ -885,12 +909,14 @@
 <script>
 (function () {
   // ==== TODO before deploying ====
-  // Replace with the Web App URL from your MacSnap! Womens sheet-writer Apps Script deployment.
+  // Replace with the Web App URL from your MacSnap! sheet-writer Apps Script deployment.
   const SHEET_URL     = "https://script.google.com/macros/s/AKfycbynEPpVdRcmStLHLg1cw-voaUId6gT4rCAJc14AAg8Q1vWUtYqqUvvh8XxH5DYu4txlHA/exec";
-  // Replace with the Web App URL from your MacSnap! Womens photo-upload Apps Script deployment.
+  // Replace with the Web App URL from your MacSnap! photo-upload Apps Script deployment.
   const PHOTO_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbx5gqlr03zdNG2JNoK1BhKPcL6PDtV3jRuQq46STjQCiyhnITysED-qY1bvfdLszHwcTQ/exec";
 
   const STORAGE_KEY = "macsnap_womens_installer_session";
+  const TALLY_STORAGE_KEY = "macsnap_womens_tally";
+  const RECENT_JOBS_STORAGE_KEY = "macsnap_womens_recent_jobs";
 
   // ==== TEMPORARY DEBUG MODE — remove this whole block plus the
   // #debug-panel div once TV barcode scanning is confirmed reliable ====
@@ -994,6 +1020,7 @@
   const pageDot2          = document.getElementById('page-dot-2');
   const summaryGate       = document.getElementById('summary-gate');
   const summaryDetails    = document.getElementById('summary-details');
+  const summaryTally      = document.getElementById('summary-tally');
   const summaryJobDisplay = document.getElementById('summary-job-display');
   const summaryVenueDisplay = document.getElementById('summary-venue-display');
   const btnSummaryNext    = document.getElementById('btn-summary-next');
@@ -1013,6 +1040,8 @@
   const jobInput2    = document.getElementById('job-input-2');
   const venueInput2  = document.getElementById('venue-input-2');
   const btnSaveUpdate = document.getElementById('btn-save-update');
+  const recentJobsWrap = document.getElementById('recent-jobs-wrap');
+  const recentJobsList = document.getElementById('recent-jobs-list');
 
   const installerTag = document.getElementById('installer-tag');
 
@@ -1022,6 +1051,56 @@
   }
   function setSession(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  // Today's tally — counts successful submissions, reset automatically
+  // whenever the date changes (compares against today's date each time
+  // rather than needing a separate midnight-rollover mechanism).
+  function todayDateString() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function incrementTodayTally() {
+    let data;
+    try { data = JSON.parse(localStorage.getItem(TALLY_STORAGE_KEY) || 'null'); }
+    catch (e) { data = null; }
+    const today = todayDateString();
+    if (!data || data.date !== today) data = { date: today, count: 0 };
+    data.count += 1;
+    localStorage.setItem(TALLY_STORAGE_KEY, JSON.stringify(data));
+    return data.count;
+  }
+
+  // Recent jobs — up to 5, most recent first, deduplicated by job number
+  // (re-using a job moves it back to the front rather than duplicating).
+  function getRecentJobs() {
+    try { return JSON.parse(localStorage.getItem(RECENT_JOBS_STORAGE_KEY) || '[]'); }
+    catch (e) { return []; }
+  }
+  function addRecentJob(job, venue) {
+    if (!job || !venue) return;
+    let list = getRecentJobs().filter(j => j.job !== job);
+    list.unshift({ job, venue });
+    list = list.slice(0, 5);
+    localStorage.setItem(RECENT_JOBS_STORAGE_KEY, JSON.stringify(list));
+  }
+  function renderRecentJobs() {
+    const list = getRecentJobs();
+    if (!list.length) { recentJobsWrap.style.display = 'none'; return; }
+    recentJobsWrap.style.display = 'block';
+    recentJobsList.innerHTML = list.map((entry, i) =>
+      '<button type="button" class="recent-job-btn" data-index="' + i + '" style="display:flex; width:100%; justify-content:space-between; align-items:center; background:rgba(255,61,129,0.08); border:1px solid rgba(255,61,129,0.2); border-radius:10px; padding:11px 14px; margin-bottom:8px; color:var(--sand); font-size:14px; font-weight:600; text-align:left;">' +
+        '<span>Job ' + entry.job + '</span><span style="color:var(--grey); font-weight:500; font-size:12px;">' + entry.venue + '</span>' +
+      '</button>'
+    ).join('');
+    recentJobsList.querySelectorAll('.recent-job-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entry = list[parseInt(btn.dataset.index, 10)];
+        jobInput2.value = entry.job;
+        venueInput2.value = entry.venue;
+        btnSaveUpdate.click();
+      });
+    });
   }
 
   let session = getSession();
@@ -1071,6 +1150,7 @@
     updateGate.classList.remove('hidden');
     jobInput2.value = prefill ? (session.job || '') : '';
     venueInput2.value = prefill ? (session.venue || '') : '';
+    renderRecentJobs();
     jobInput2.focus();
   }
 
@@ -1083,6 +1163,7 @@
     if (!venue) { venueInput.focus(); return; }
     session = { name, job, venue };
     setSession(session);
+    addRecentJob(job, venue);
     hideAllGates();
     showInstallerTag();
     updateJobBar();
@@ -1121,6 +1202,7 @@
     session.job = job;
     session.venue = venue;
     setSession(session);
+    addRecentJob(job, venue);
     hideAllGates();
     updateJobBar();
     autoStartFirstScan();
@@ -2135,6 +2217,7 @@
     submitting = true;
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Uploading photos…';
+    const submitStartTime = performance.now();
 
     try {
       const macApplies = isExterityTicked();
@@ -2145,8 +2228,17 @@
       // controls whether the scanned VALUE gets included in the row (via
       // buildPayload below), but a real photo shouldn't get silently
       // dropped just because a checkbox was missed.
-      const macPhotoLink = await uploadPhoto(targets.mac.uploadPhoto || targets.mac.photo, 'mac_scan');
-      const tvPhotoLink  = await uploadPhoto(targets.tv.uploadPhoto  || targets.tv.photo,  'tv_scan');
+      //
+      // Both uploads run concurrently (not one after another) — each is
+      // its own network round-trip to Apps Script, so doing them in
+      // parallel roughly halves the time this phase takes versus waiting
+      // for one to fully finish before starting the other.
+      const photosStartTime = performance.now();
+      const [macPhotoLink, tvPhotoLink] = await Promise.all([
+        uploadPhoto(targets.mac.uploadPhoto || targets.mac.photo, 'mac_scan'),
+        uploadPhoto(targets.tv.uploadPhoto  || targets.tv.photo,  'tv_scan')
+      ]);
+      debugLog('submitJob: both photo uploads finished', Math.round(performance.now() - photosStartTime) + 'ms');
 
       const macPhotoFailed = targets.mac.photo && !macPhotoLink;
       const tvPhotoFailed  = targets.tv.photo  && !tvPhotoLink;
@@ -2160,12 +2252,15 @@
       if (macPhotoLink) payload.macPhoto = macPhotoLink;
       if (tvPhotoLink) payload.tvPhoto = tvPhotoLink;
 
+      const sheetStartTime = performance.now();
       const response = await fetch(SHEET_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
       const result = await response.json();
+      debugLog('submitJob: sheet write (incl. ASSETS lookup) finished', Math.round(performance.now() - sheetStartTime) + 'ms');
+      debugLog('submitJob: TOTAL submit time', Math.round(performance.now() - submitStartTime) + 'ms');
 
       if (result.success) {
         showSubmitSuccess();
@@ -2277,6 +2372,7 @@
     const jobText = session.job;
     const venueText = session.venue;
     const detailsHTML = buildSummaryDetailsHTML();
+    const tallyCount = incrementTodayTally();
 
     resetFormState();
 
@@ -2289,6 +2385,7 @@
     setTimeout(() => {
       summaryJobDisplay.textContent = jobText;
       summaryVenueDisplay.textContent = venueText;
+      summaryTally.textContent = tallyCount + (tallyCount === 1 ? ' scan today' : ' scans today');
       summaryDetails.innerHTML = detailsHTML;
       hideAllGates();
       summaryGate.classList.remove('hidden');
