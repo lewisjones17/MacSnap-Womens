@@ -1289,7 +1289,7 @@
       useQR: false, // reverted — reads the MAC digits directly via OCR, no barcode/QR decode, no ASSETS lookup
       ocrCrop: { widthFrac: 0.86, heightFrac: 0.22, yFrac: 0.50 }, // narrow strip, tuned to Mac label position — same as the original MacSnap!
       uploadCropped: false, // full-frame upload photo — lets the physical MAC label be visible in shot too
-      rotateDeg: -90 // saved photo rotated 90° counter-clockwise
+      rotateDeg: 0 // rotation disabled
     },
     tv: {
       value: null,
@@ -1312,7 +1312,7 @@
       ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop — label/text position varies a lot more than Mac's
       uploadCropped: false, // full-frame upload photo, same as Exterity — the 25% JPEG quality keeps payload size small enough without cropping
       uploadCrop: { widthFrac: 0.55, heightFrac: 0.22, yFrac: 0.39 }, // genuinely tight — the OCR crop above is nearly full-frame, too big to fix the payload-size issue
-      rotateDeg: -90 // saved photo rotated 90° counter-clockwise, same as Exterity
+      rotateDeg: 0 // rotation disabled
     }
   };
 
@@ -1771,16 +1771,28 @@
     return buildBaseCanvasForTarget(target, source).toDataURL('image/jpeg', 0.50);
   }
 
+  // Converts a canvas to greyscale — applied to the upload copy only,
+  // never the in-app display copy.
+  function toGrayscale(canvas) {
+    const c = document.createElement('canvas');
+    c.width = canvas.width;
+    c.height = canvas.height;
+    const ctx = c.getContext('2d');
+    ctx.filter = 'grayscale(1)';
+    ctx.drawImage(canvas, 0, 0);
+    return c;
+  }
+
   // What actually gets uploaded/saved — same crop-or-full base as the
-  // display photo, but with the target's rotateDeg applied if it has one.
-  // Quality is lower here specifically (0.30 vs the display copy's 0.50)
-  // since this is the one that actually gets sent over the network —
-  // smaller file, faster/more reliable upload, especially on flaky
-  // on-site wifi/cellular.
+  // display photo, but converted to black and white and saved at the
+  // lowest usable JPEG quality, since this is the one that actually gets
+  // sent over the network — smaller file, faster/more reliable upload,
+  // especially on flaky on-site wifi/cellular.
   function buildFinalUploadPhotoForTarget(target, source) {
     let canvas = buildBaseCanvasForTarget(target, source);
     if (target.rotateDeg) canvas = rotateCanvas(canvas, target.rotateDeg);
-    return canvas.toDataURL('image/jpeg', 0.25);
+    canvas = toGrayscale(canvas);
+    return canvas.toDataURL('image/jpeg', 0.10);
   }
 
   function normalizeForCompare(s) {
@@ -2025,19 +2037,25 @@
         ? extractConfidentText(data, t.whitelist)
         : (data.text || '').toUpperCase().replace(new RegExp('[^' + t.whitelist.toUpperCase() + ']', 'g'), '');
 
-      let finalValue;
+      let finalValue = null;
       if (t.anchorPrefix) {
+        // Strict: only accept a result that genuinely contains the known
+        // MAC prefix (all Exterity MACs start 00181C). No fallback guess
+        // of "just take the first 12 characters" — that produced wrong
+        // values when OCR misread the prefix or picked up unrelated text.
+        // If the prefix genuinely isn't there, this is a failed read, not
+        // a best-effort value.
         const prefixIndex = cleaned.indexOf(t.anchorPrefix);
         if (prefixIndex !== -1 && cleaned.length - prefixIndex >= 12) {
           finalValue = cleaned.slice(prefixIndex, prefixIndex + 12);
-        } else {
-          finalValue = cleaned.slice(0, 12);
         }
       } else {
         finalValue = cleaned;
       }
 
-      if (cleaned.length >= (t.anchorPrefix ? 10 : 4)) {
+      const gotValidResult = t.anchorPrefix ? !!finalValue : (cleaned.length >= 4);
+
+      if (gotValidResult) {
         setTargetResult(activeTarget, finalValue, 'capture', displayPhoto);
         targets[activeTarget].uploadPhoto = finalUploadPhoto;
         if (t.useQR) {
@@ -2058,7 +2076,11 @@
           setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         }
       } else {
-        showToast('Could not read it clearly — try again or type it');
+        if (t.anchorPrefix) {
+          showToast('Could not find a MAC starting 00181C — try again or type it');
+        } else {
+          showToast('Could not read it clearly — try again or type it');
+        }
         scanState.textContent = 'Tap Capture when lined up';
       }
 
