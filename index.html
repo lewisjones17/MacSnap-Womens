@@ -2241,57 +2241,41 @@
     }
   }
 
-  async function uploadPhotosBatchOnce(items) {
-    // items: [{ dataUrl, filenamePrefix }, ...] — only items with a real
-    // dataUrl are actually sent; empty slots map straight to null.
-    const toSend = items
-      .map((item, i) => ({ item, i }))
-      .filter(({ item }) => !!item.dataUrl);
-
-    if (toSend.length === 0) return items.map(() => null);
-
-    const approxTotalKB = toSend.reduce((sum, { item }) => sum + Math.round((item.dataUrl.length * 0.75) / 1024), 0);
-    debugLog('uploadPhotosBatchOnce: sending', { count: toSend.length, approxTotalKB: approxTotalKB });
-
+  async function uploadPhotoOnce(dataUrl, filenamePrefix) {
+    const approxKB = Math.round((dataUrl.length * 0.75) / 1024);
+    debugLog('uploadPhotoOnce: sending', { filenamePrefix: filenamePrefix, approxKB: approxKB });
     const response = await fetchWithTimeout(PHOTO_UPLOAD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        images: toSend.map(({ item }) => ({
-          image: item.dataUrl,
-          filename: item.filenamePrefix + '_' + Date.now() + '.jpg'
-        }))
+        image: dataUrl,
+        filename: filenamePrefix + '_' + Date.now() + '.jpg'
       })
     }, 25000);
-    debugLog('uploadPhotosBatchOnce: fetch responded', { status: response.status, ok: response.ok });
+    debugLog('uploadPhotoOnce: fetch responded', { status: response.status, ok: response.ok });
     const result = await response.json();
-    debugLog('uploadPhotosBatchOnce: parsed result', result);
-    if (!result.success) throw new Error(result.error || 'Photo upload script returned failure');
-
-    // Map the returned links back onto the original item positions
-    // (including the ones that were skipped for having no dataUrl).
-    const links = items.map(() => null);
-    toSend.forEach(({ i }, idx) => { links[i] = result.links[idx] || null; });
-    return links;
+    debugLog('uploadPhotoOnce: parsed result', result);
+    if (result.success) return result.link;
+    throw new Error(result.error || 'Photo upload script returned failure');
   }
 
   // On-site wifi/cellular is often flaky — a single transient failure was
-  // silently losing photo links with no retry and no warning. Retries the
-  // whole batch once after a short pause before giving up on any that
-  // still failed.
-  async function uploadPhotosBatch(items) {
+  // silently losing the photo link with no retry and no warning. Retries
+  // once after a short pause before giving up for real.
+  async function uploadPhoto(dataUrl, filenamePrefix) {
+    if (!dataUrl) return null;
     try {
-      return await uploadPhotosBatchOnce(items);
+      return await uploadPhotoOnce(dataUrl, filenamePrefix);
     } catch (err) {
-      console.error('Photo batch upload failed, retrying once:', err);
-      debugLog('Photo batch upload failed, retrying once', err && err.name === 'AbortError' ? 'timed out' : (err && err.message));
+      console.error('Photo upload failed, retrying once:', err);
+      debugLog('Photo upload failed, retrying once', err && err.name === 'AbortError' ? 'timed out' : (err && err.message));
       await new Promise(resolve => setTimeout(resolve, 1200));
       try {
-        return await uploadPhotosBatchOnce(items);
+        return await uploadPhotoOnce(dataUrl, filenamePrefix);
       } catch (err2) {
-        console.error('Photo batch upload retry also failed:', err2);
-        debugLog('Photo batch upload retry also failed', err2 && err2.name === 'AbortError' ? 'timed out' : (err2 && err2.message));
-        return items.map(() => null);
+        console.error('Photo upload retry also failed:', err2);
+        debugLog('Photo upload retry also failed', err2 && err2.name === 'AbortError' ? 'timed out' : (err2 && err2.message));
+        return null;
       }
     }
   }
@@ -2318,14 +2302,17 @@
       // buildPayload below), but a real photo shouldn't get silently
       // dropped just because a checkbox was missed.
       //
-      // Both photos now go up in a SINGLE Apps Script call instead of
-      // two separate ones — each call pays its own fixed execution
-      // startup cost, so batching them cuts a real chunk of that
-      // overhead versus running two calls in parallel.
+      // REVERTED from a single-batched-call approach — measured in the
+      // field, batching both photos into one Apps Script execution was
+      // slower (7.8s) than two separate parallel calls (4.4-5.1s). The
+      // per-file Drive work (createFile + setSharing) genuinely runs
+      // concurrently across two separate executions on Google's side,
+      // but serially within one — so combining them into "one call"
+      // traded real parallelism for a smaller, illusory overhead saving.
       const photosStartTime = performance.now();
-      const [macPhotoLink, tvPhotoLink] = await uploadPhotosBatch([
-        { dataUrl: targets.mac.uploadPhoto || targets.mac.photo, filenamePrefix: 'mac_scan' },
-        { dataUrl: targets.tv.uploadPhoto  || targets.tv.photo,  filenamePrefix: 'tv_scan' }
+      const [macPhotoLink, tvPhotoLink] = await Promise.all([
+        uploadPhoto(targets.mac.uploadPhoto || targets.mac.photo, 'mac_scan'),
+        uploadPhoto(targets.tv.uploadPhoto  || targets.tv.photo,  'tv_scan')
       ]);
       debugLog('submitJob: both photo uploads finished', Math.round(performance.now() - photosStartTime) + 'ms');
 
