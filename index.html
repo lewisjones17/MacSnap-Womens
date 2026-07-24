@@ -872,7 +872,7 @@
     <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
     <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
     <div class="manual-row" id="mac-manual-row">
-      <input type="text" id="mac-manual-input" placeholder="Type Exterity" autocapitalize="characters" autocomplete="off">
+      <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
       <button class="btn-primary" id="mac-manual-use">Use</button>
     </div>
   </div>
@@ -1283,11 +1283,11 @@
       manualInput: document.getElementById('mac-manual-input'),
       manualUseBtn: document.getElementById('mac-manual-use'),
       manualBtn: document.getElementById('btn-mac-manual'),
-      guideLabel: 'LINE UP EXTERITY BARCODE / QR',
-      whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
-      anchorPrefix: null,
-      useQR: true, // tries ZXing (QR/Micro QR/DataMatrix/1D) before OCR fallback — scans a code that resolves to a MAC via the ASSETS master list lookup
-      ocrCrop: { widthFrac: 0.92, heightFrac: 0.62, yFrac: 0.19 }, // generous crop, same as TV
+      guideLabel: 'LINE UP MAC DIGITS (NOT SERIAL NO.)',
+      whitelist: '0123456789ABCDEFabcdef',
+      anchorPrefix: '00181C',
+      useQR: false, // reverted — reads the MAC digits directly via OCR, no barcode/QR decode, no ASSETS lookup
+      ocrCrop: { widthFrac: 0.86, heightFrac: 0.22, yFrac: 0.50 }, // narrow strip, tuned to Mac label position — same as the original MacSnap!
       uploadCropped: false, // full-frame upload photo — lets the physical MAC label be visible in shot too
       rotateDeg: -90 // saved photo rotated 90° counter-clockwise
     },
@@ -2168,17 +2168,32 @@
 
   let submitting = false;
 
+  // Wraps fetch with a hard timeout — without this, a request that stalls
+  // (e.g. iOS suspending network activity when the phone locks or the app
+  // is backgrounded mid-upload) can hang indefinitely with no error and
+  // no retry, leaving submit stuck on "Uploading photos…" for minutes.
+  // Aborting after a timeout turns that into a normal, retryable failure.
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function uploadPhotoOnce(dataUrl, filenamePrefix) {
     const approxKB = Math.round((dataUrl.length * 0.75) / 1024);
     debugLog('uploadPhotoOnce: sending', { filenamePrefix: filenamePrefix, approxKB: approxKB });
-    const response = await fetch(PHOTO_UPLOAD_URL, {
+    const response = await fetchWithTimeout(PHOTO_UPLOAD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         image: dataUrl,
         filename: filenamePrefix + '_' + Date.now() + '.jpg'
       })
-    });
+    }, 25000);
     debugLog('uploadPhotoOnce: fetch responded', { status: response.status, ok: response.ok });
     const result = await response.json();
     debugLog('uploadPhotoOnce: parsed result', result);
@@ -2195,13 +2210,13 @@
       return await uploadPhotoOnce(dataUrl, filenamePrefix);
     } catch (err) {
       console.error('Photo upload failed, retrying once:', err);
-      debugLog('Photo upload failed, retrying once', err && err.message);
+      debugLog('Photo upload failed, retrying once', err && err.name === 'AbortError' ? 'timed out' : (err && err.message));
       await new Promise(resolve => setTimeout(resolve, 1200));
       try {
         return await uploadPhotoOnce(dataUrl, filenamePrefix);
       } catch (err2) {
         console.error('Photo upload retry also failed:', err2);
-        debugLog('Photo upload retry also failed', err2 && err2.message);
+        debugLog('Photo upload retry also failed', err2 && err2.name === 'AbortError' ? 'timed out' : (err2 && err2.message));
         return null;
       }
     }
@@ -2253,11 +2268,11 @@
       if (tvPhotoLink) payload.tvPhoto = tvPhotoLink;
 
       const sheetStartTime = performance.now();
-      const response = await fetch(SHEET_URL, {
+      const response = await fetchWithTimeout(SHEET_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
-      });
+      }, 25000);
       const result = await response.json();
       debugLog('submitJob: sheet write (incl. ASSETS lookup) finished', Math.round(performance.now() - sheetStartTime) + 'ms');
       debugLog('submitJob: TOTAL submit time', Math.round(performance.now() - submitStartTime) + 'ms');
