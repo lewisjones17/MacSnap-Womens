@@ -2107,7 +2107,13 @@
         if (navigator.vibrate) navigator.vibrate(60);
         scanState.textContent = 'Tap Capture to try again, or continue below';
         if (currentPage === 'page2') {
-          setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+          // Jump the cursor straight into Location, but scroll the scanned
+          // row (not the form) to the top — keeps the captured MAC visible
+          // below the camera and above the Location field while typing.
+          setTimeout(() => {
+            planLocationInput.focus({ preventScroll: true });
+            t.rowEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 400);
         } else if (currentPage === 'page1') {
           setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         }
@@ -2383,8 +2389,9 @@
     document.querySelectorAll('.reason-check').forEach(cb => cb.checked = false);
     document.querySelectorAll('.tv-size-check').forEach(cb => cb.checked = false);
     document.querySelectorAll('.equip-check').forEach(cb => {
-      if (cb.classList.contains('exterity-check')) cb.checked = true; // Exterity auto-ticked by default
-      else if (!cb.classList.contains('tv-size-check') && cb.value !== 'Stand') cb.checked = false;
+      // Exterity auto-ticked by default, everything else (including Stand)
+      // cleared — nothing carries over from the previous job.
+      cb.checked = cb.classList.contains('exterity-check');
     });
     document.querySelector('.exterity-check').checked = true;
     otherInput.value = '';
