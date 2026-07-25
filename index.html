@@ -1992,6 +1992,17 @@
   async function captureAndRead() {
     if (!scanning || ocrBusy || !activeTarget) return;
     const t = targets[activeTarget];
+
+    // iOS only lets the keyboard open from a direct tap — a focus() call
+    // made after the async OCR finishes is silently ignored. So for the
+    // Exterity capture on page 2, grab focus on the Location field right
+    // now, inside the Capture tap itself: the cursor is then already
+    // sitting in Location by the time the scan completes. On a failed
+    // read it's blurred again below so the keyboard gets out of the way
+    // for a retry.
+    const focusLocationAfter = activeTarget === 'mac' && currentPage === 'page2';
+    if (focusLocationAfter) planLocationInput.focus({ preventScroll: true });
+
     ocrBusy = true;
     btnCapture.textContent = 'Reading…';
     btnCapture.disabled = true;
@@ -2132,12 +2143,14 @@
           showToast('Could not read it clearly — try again or type it');
         }
         scanState.textContent = 'Tap Capture when lined up';
+        if (focusLocationAfter) planLocationInput.blur();
       }
 
     } catch (err) {
       console.error('OCR error:', err);
       showToast('Could not read it — try again or type it');
       scanState.textContent = 'Tap Capture when lined up';
+      if (focusLocationAfter) planLocationInput.blur();
     } finally {
       ocrBusy = false;
       btnCapture.textContent = 'Capture ' + t.label;
