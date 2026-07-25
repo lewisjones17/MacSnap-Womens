@@ -396,12 +396,12 @@
     border-radius: 8px;
     display: block;
     /* Capped to a compact strip — the full-size preview pushed the
-       Location field off screen after the post-capture jump. Cropped
-       from the bottom (object-position) since that's where the label
-       sits, and the pink MAC stamp is pinned over it either way. */
+       Location field off screen after the post-capture jump. Shows the
+       middle of the shot, where the label being scanned sits. Display
+       only: the uploaded photo is built separately and is unaffected. */
     max-height: 130px;
     object-fit: cover;
-    object-position: center bottom;
+    object-position: center center;
   }
 
   /* Scanned value stamped across the very bottom of the captured photo —
