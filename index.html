@@ -388,13 +388,50 @@
   .result-row-photo {
     margin-top: 10px;
     display: none;
+    position: relative;
   }
   .result-row-photo.show { display: block; }
   .result-row-photo img {
     width: 100%;
     border-radius: 8px;
     display: block;
+    /* Capped to a compact strip — the full-size preview pushed the
+       Location field off screen after the post-capture jump. Cropped
+       from the bottom (object-position) since that's where the label
+       sits, and the pink MAC stamp is pinned over it either way. */
+    max-height: 130px;
+    object-fit: cover;
+    object-position: center bottom;
   }
+
+  /* Scanned value stamped across the very bottom of the captured photo —
+     stays readable even when the page has jumped down to the form and
+     only the bottom strip of the photo is still on screen. */
+  .photo-mac-overlay {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: none;
+    text-align: center;
+    font-family: "SF Mono", "Roboto Mono", monospace;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--rose-light);
+    background: rgba(26,15,20,0.72);
+    padding: 8px 10px;
+    border-radius: 0 0 8px 8px;
+  }
+  .photo-mac-overlay.show { display: block; }
+
+  /* When the post-capture jump scrolls the form into view, leave just
+     enough room above it for the bottom of the photo (with the pink MAC
+     stamp) to stay visible over the Location field. */
+  #equipment-section { scroll-margin-top: 58px; }
+
+  /* Without this the post-capture jump can't scroll far enough — the
+     page simply runs out of content below the form, so the browser
+     stops short and the Location field stays low on screen. */
+  #page2.show { padding-bottom: 55vh; }
 
   .manual-row {
     display: none;
@@ -871,7 +908,7 @@
     </div>
     <input class="result-row-value" id="mac-value" type="text" placeholder="Not scanned" autocapitalize="characters" autocomplete="off">
     <div class="result-row-meta" id="mac-meta" style="display:none;"><span class="dot"></span><span id="mac-meta-text"></span></div>
-    <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"></div>
+    <div class="result-row-photo" id="mac-photo-wrap"><img id="mac-photo-img"><div class="photo-mac-overlay" id="mac-photo-overlay"></div></div>
     <div class="manual-row" id="mac-manual-row">
       <input type="text" id="mac-manual-input" placeholder="Type Mac digits" autocapitalize="characters" autocomplete="off">
       <button class="btn-primary" id="mac-manual-use">Use</button>
@@ -1302,6 +1339,7 @@
   const otherInput        = document.getElementById('other-input');
   const planLocationInput = document.getElementById('plan-location-input');
   const equipOtherInput   = document.getElementById('equip-other-input');
+  const macPhotoOverlay   = document.getElementById('mac-photo-overlay');
 
   let jobComplete = null;
   let scanning = false;
@@ -1391,9 +1429,21 @@
     } else {
       t.photoWrap.classList.remove('show');
     }
+    if (key === 'mac') updateMacPhotoOverlay();
   }
 
-  targets.mac.valueEl.addEventListener('input', () => { targets.mac.value = targets.mac.valueEl.value.trim(); });
+  // Keeps the pink MAC stamp on the photo in sync with the value —
+  // including manual edits made after a capture.
+  function updateMacPhotoOverlay() {
+    const t = targets.mac;
+    macPhotoOverlay.textContent = t.value || '';
+    macPhotoOverlay.classList.toggle('show', !!(t.value && t.photo));
+  }
+
+  targets.mac.valueEl.addEventListener('input', () => {
+    targets.mac.value = targets.mac.valueEl.value.trim();
+    updateMacPhotoOverlay();
+  });
   targets.tv.valueEl.addEventListener('input', () => { targets.tv.value = targets.tv.valueEl.value.trim(); });
 
   function otherTarget(key) {
@@ -1992,17 +2042,6 @@
   async function captureAndRead() {
     if (!scanning || ocrBusy || !activeTarget) return;
     const t = targets[activeTarget];
-
-    // iOS only lets the keyboard open from a direct tap — a focus() call
-    // made after the async OCR finishes is silently ignored. So for the
-    // Exterity capture on page 2, grab focus on the Location field right
-    // now, inside the Capture tap itself: the cursor is then already
-    // sitting in Location by the time the scan completes. On a failed
-    // read it's blurred again below so the keyboard gets out of the way
-    // for a retry.
-    const focusLocationAfter = activeTarget === 'mac' && currentPage === 'page2';
-    if (focusLocationAfter) planLocationInput.focus({ preventScroll: true });
-
     ocrBusy = true;
     btnCapture.textContent = 'Reading…';
     btnCapture.disabled = true;
@@ -2126,13 +2165,10 @@
         if (navigator.vibrate) navigator.vibrate(60);
         scanState.textContent = 'Tap Capture to try again, or continue below';
         if (currentPage === 'page2') {
-          // Jump the cursor straight into Location, but scroll the scanned
-          // row (not the form) to the top — keeps the captured MAC visible
-          // below the camera and above the Location field while typing.
-          setTimeout(() => {
-            planLocationInput.focus({ preventScroll: true });
-            t.rowEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 400);
+          // scroll-margin-top on #equipment-section leaves room above it,
+          // so the bottom strip of the photo — with the pink MAC stamped
+          // on it — stays on screen just above the Location field.
+          setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         } else if (currentPage === 'page1') {
           setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         }
@@ -2143,14 +2179,12 @@
           showToast('Could not read it clearly — try again or type it');
         }
         scanState.textContent = 'Tap Capture when lined up';
-        if (focusLocationAfter) planLocationInput.blur();
       }
 
     } catch (err) {
       console.error('OCR error:', err);
       showToast('Could not read it — try again or type it');
       scanState.textContent = 'Tap Capture when lined up';
-      if (focusLocationAfter) planLocationInput.blur();
     } finally {
       ocrBusy = false;
       btnCapture.textContent = 'Capture ' + t.label;
