@@ -527,6 +527,19 @@
   }
   #other-input:focus, #plan-location-input:focus { outline: 2px solid var(--rose-light); }
 
+  /* iOS won't always let the app put the cursor in a field on its own
+     (the keyboard can only open from a direct tap), so the field pulses
+     after a capture to make it obvious where to tap next. Cleared as
+     soon as it's focused or typed in. */
+  @keyframes fieldpulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,61,129,0.8); }
+    70%  { box-shadow: 0 0 0 10px rgba(255,61,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,61,129,0); }
+  }
+  #plan-location-input.needs-attention {
+    animation: fieldpulse 1.5s ease-out infinite;
+  }
+
   #equip-other-input {
     width: 100%;
     background: var(--sand);
@@ -785,7 +798,7 @@
         <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
       </div>
 
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br>build 2026-07-25a</div>
     </div>
   </div>
 
@@ -935,7 +948,10 @@
     </div>
   </div>
 
-  <footer>MacSnap! · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.</footer>
+  <!-- Build stamp: iOS caches this app aggressively, so this is the quick
+       way to tell whether a phone is actually running the latest version
+       after an update (bump it on every deploy). -->
+  <footer>MacSnap! · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br><span style="opacity:0.6;">build 2026-07-25a</span></footer>
 
 </div>
 
@@ -981,7 +997,11 @@
   const debugOverlayContent = document.getElementById('debug-overlay-content');
   const btnDebugOverlayClose = document.getElementById('btn-debug-overlay-close');
   const btnDebugOverlayCopy = document.getElementById('btn-debug-overlay-copy');
-  if (DEBUG_MODE && debugPanelWrap) debugPanelWrap.style.display = 'block';
+  // The panel element stays in the DOM as the log buffer (debugLog writes
+  // into it and the overlay reads from it), but it's no longer shown on
+  // the summary popup — that page is what engineers see after every
+  // single submission, and a wall of green log text doesn't belong there.
+  // The floating 🐛 button still opens the same log from anywhere.
   if (DEBUG_MODE && btnDebugFloat) btnDebugFloat.style.display = 'flex';
   function copyTextToClipboard(text) {
     if (!text) { showToast('Nothing to copy yet'); return; }
@@ -1411,6 +1431,11 @@
   }
 
   planLocationInput.addEventListener('input', updateSubmitButtonState);
+
+  // The pulse has done its job the moment the field is actually reached.
+  ['focus', 'input'].forEach(evt =>
+    planLocationInput.addEventListener(evt, () => planLocationInput.classList.remove('needs-attention'))
+  );
 
   function setTargetResult(key, value, source, photoDataUrl) {
     const t = targets[key];
@@ -2042,6 +2067,16 @@
   async function captureAndRead() {
     if (!scanning || ocrBusy || !activeTarget) return;
     const t = targets[activeTarget];
+
+    // iOS only opens the keyboard from a direct tap — a focus() call made
+    // later, once the async OCR has finished, is silently ignored. So the
+    // focus is grabbed here, synchronously inside the Capture tap itself,
+    // while the tap still counts as a user gesture. It's re-asserted after
+    // the read lands (below) for browsers that allow it, and the field
+    // also pulses so it's obvious where to tap if iOS refuses both.
+    const wantLocationFocus = activeTarget === 'mac' && currentPage === 'page2';
+    if (wantLocationFocus) planLocationInput.focus({ preventScroll: true });
+
     ocrBusy = true;
     btnCapture.textContent = 'Reading…';
     btnCapture.disabled = true;
@@ -2168,7 +2203,17 @@
           // scroll-margin-top on #equipment-section leaves room above it,
           // so the bottom strip of the photo — with the pink MAC stamped
           // on it — stays on screen just above the Location field.
-          setTimeout(() => equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+          setTimeout(() => {
+            equipmentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (wantLocationFocus) {
+              planLocationInput.focus({ preventScroll: true });
+              // Only pulse if the browser actually refused the focus —
+              // no point flashing a field the cursor is already sitting in.
+              if (document.activeElement !== planLocationInput) {
+                planLocationInput.classList.add('needs-attention');
+              }
+            }
+          }, 400);
         } else if (currentPage === 'page1') {
           setTimeout(() => page1Nav.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
         }
@@ -2179,12 +2224,16 @@
           showToast('Could not read it clearly — try again or type it');
         }
         scanState.textContent = 'Tap Capture when lined up';
+        // Failed read — get the keyboard out of the way so the camera
+        // isn't hidden behind it while lining the label up again.
+        if (wantLocationFocus) planLocationInput.blur();
       }
 
     } catch (err) {
       console.error('OCR error:', err);
       showToast('Could not read it — try again or type it');
       scanState.textContent = 'Tap Capture when lined up';
+      if (wantLocationFocus) planLocationInput.blur();
     } finally {
       ocrBusy = false;
       btnCapture.textContent = 'Capture ' + t.label;
@@ -2451,6 +2500,7 @@
     document.querySelector('.exterity-check').checked = true;
     otherInput.value = '';
     planLocationInput.value = '';
+    planLocationInput.classList.remove('needs-attention');
     equipOtherInput.value = '';
     btnCompleteYes.classList.remove('complete-selected');
     btnCompleteNo.classList.remove('complete-selected');
