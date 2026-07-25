@@ -712,6 +712,7 @@
       </div>
       <h2 id="update-gate-heading">New job / structure</h2>
       <p>This updates what gets sent with every scan.</p>
+      <p id="update-last-job" style="display:none; color:var(--rose-light); font-weight:600; margin-top:-12px;"></p>
       <input id="job-input-2" type="text" placeholder="Job number" autocomplete="off" inputmode="numeric">
       <input id="venue-input-2" type="text" placeholder="Structure / location" autocomplete="off" autocapitalize="words">
       <button class="btn-primary" id="btn-save-update">Save & continue</button>
@@ -1078,6 +1079,7 @@
   const btnSaveUpdate = document.getElementById('btn-save-update');
   const recentJobsWrap = document.getElementById('recent-jobs-wrap');
   const recentJobsList = document.getElementById('recent-jobs-list');
+  const updateLastJob  = document.getElementById('update-last-job');
 
   const installerTag = document.getElementById('installer-tag');
 
@@ -1155,7 +1157,7 @@
     installerTag.style.display = 'inline';
     installerTag.innerHTML = 'Hi, ' + session.name + '<button id="btn-new-job">new job</button><button id="btn-change-name">reset</button>';
     document.getElementById('btn-new-job').addEventListener('click', () => {
-      openUpdateGate(true);
+      openUpdateGate();
     });
     document.getElementById('btn-change-name').addEventListener('click', () => {
       hideAllGates();
@@ -1174,18 +1176,24 @@
     confirmVenueDisplay.textContent = session.venue;
   }
 
-  // Opens the job/structure entry screen. prefill=true carries over the
-  // current job/venue for editing (header "new job" link, or "No, new
-  // job/structure" from the confirm screen); prefill=false clears both
-  // fields and focuses Job Number for a genuinely fresh start (the
-  // summary popup's "New job" button).
-  function openUpdateGate(prefill) {
+  // Opens the job/structure entry screen. The fields always start empty
+  // so a stale job number can't be accidentally kept — the last job is
+  // shown as a reference line above the fields instead (and in Recent
+  // jobs below, where one tap re-uses it).
+  function openUpdateGate() {
     resetFormState();
     goToPage('page1');
     hideAllGates();
     updateGate.classList.remove('hidden');
-    jobInput2.value = prefill ? (session.job || '') : '';
-    venueInput2.value = prefill ? (session.venue || '') : '';
+    jobInput2.value = '';
+    venueInput2.value = '';
+    if (session && session.job && session.venue) {
+      // textContent, not innerHTML — venue is free text typed by the engineer
+      updateLastJob.textContent = 'Last job: ' + session.job + ' · ' + session.venue;
+      updateLastJob.style.display = 'block';
+    } else {
+      updateLastJob.style.display = 'none';
+    }
     renderRecentJobs();
     jobInput2.focus();
   }
@@ -1227,7 +1235,7 @@
   });
 
   btnConfirmNo.addEventListener('click', () => {
-    openUpdateGate(true);
+    openUpdateGate();
   });
 
   btnSaveUpdate.addEventListener('click', () => {
@@ -2481,7 +2489,7 @@
   });
 
   btnSummaryNewJob.addEventListener('click', () => {
-    openUpdateGate(false);
+    openUpdateGate();
   });
 
 
