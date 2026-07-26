@@ -388,7 +388,6 @@
   .result-row-photo {
     margin-top: 10px;
     display: none;
-    position: relative;
   }
   .result-row-photo.show { display: block; }
   .result-row-photo img {
@@ -404,12 +403,10 @@
     object-position: center center;
   }
 
-  /* Scanned value stamped across the very bottom of the captured photo —
-     stays readable even when the page has jumped down to the form and
-     only the bottom strip of the photo is still on screen. */
+  /* Scanned value shown in pink directly BELOW the photo rather than
+     over it — overlaid, it covered the MAC digits printed on the label
+     itself, which is exactly what needs checking against it. */
   .photo-mac-overlay {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
     display: none;
     text-align: center;
     font-family: "SF Mono", "Roboto Mono", monospace;
@@ -417,16 +414,18 @@
     font-weight: 800;
     letter-spacing: 0.06em;
     color: var(--rose-light);
-    background: rgba(26,15,20,0.72);
+    background: rgba(26,15,20,0.92);
     padding: 8px 10px;
-    border-radius: 0 0 8px 8px;
+    border-radius: 8px;
+    margin-top: 6px;
   }
   .photo-mac-overlay.show { display: block; }
 
-  /* When the post-capture jump scrolls the form into view, leave just
-     enough room above it for the bottom of the photo (with the pink MAC
-     stamp) to stay visible over the Location field. */
-  #equipment-section { scroll-margin-top: 58px; }
+  /* When the post-capture jump scrolls the form into view, stop short
+     enough that the photo AND the pink value below it both stay on
+     screen above the Location field (photo strip 130px + the stamp).
+     The keyboard still leaves room for the field below this. */
+  #equipment-section { scroll-margin-top: 186px; }
 
   /* Without this the post-capture jump can't scroll far enough — the
      page simply runs out of content below the form, so the browser
@@ -798,7 +797,7 @@
         <div id="debug-panel" style="background:#000; color:#0f0; font-family:monospace; font-size:11px; line-height:1.5; padding:10px; border-radius:10px; max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></div>
       </div>
 
-      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br>build 2026-07-25a</div>
+      <div class="gate-copyright">© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br>build 2026-07-26a</div>
     </div>
   </div>
 
@@ -951,7 +950,7 @@
   <!-- Build stamp: iOS caches this app aggressively, so this is the quick
        way to tell whether a phone is actually running the latest version
        after an update (bump it on every deploy). -->
-  <footer>MacSnap! · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br><span style="opacity:0.6;">build 2026-07-25a</span></footer>
+  <footer>MacSnap! · Install tracking · Start here for every job<br>© Lewis Jones 2026. Unauthorized copying or distribution of MacSnap! is prohibited.<br><span style="opacity:0.6;">build 2026-07-26a</span></footer>
 
 </div>
 
